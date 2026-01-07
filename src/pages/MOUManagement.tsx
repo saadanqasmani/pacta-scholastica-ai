@@ -33,7 +33,9 @@ import {
   RefreshCw,
   CheckCircle,
   Globe,
-  Search
+  Search,
+  Trash2,
+  MoreHorizontal
 } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -590,6 +592,12 @@ function ExistingMOUsList({
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedMouIds, setSelectedMouIds] = useState<string[]>([]);
+  const [bulkStatusDialog, setBulkStatusDialog] = useState(false);
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+  const [bulkNewStatus, setBulkNewStatus] = useState<string>('');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!universityId) return;
@@ -659,6 +667,110 @@ function ExistingMOUsList({
   // Get unique statuses for filter
   const uniqueStatuses = [...new Set(mous.map(m => m.status))];
 
+  const toggleSelectMou = (mouId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedMouIds(prev => 
+      prev.includes(mouId) 
+        ? prev.filter(id => id !== mouId)
+        : [...prev, mouId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMouIds.length === filteredMous.length) {
+      setSelectedMouIds([]);
+    } else {
+      setSelectedMouIds(filteredMous.map(m => m.id));
+    }
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (!bulkNewStatus || selectedMouIds.length === 0 || !universityId) return;
+    setIsBulkUpdating(true);
+
+    try {
+      const { error } = await supabase
+        .from('mous')
+        .update({ status: bulkNewStatus })
+        .in('id', selectedMouIds);
+
+      if (error) throw error;
+
+      // Log history for each MOU
+      const historyEntries = selectedMouIds.map(mouId => ({
+        mou_id: mouId,
+        actor_university_id: universityId,
+        action: `bulk_status_changed_to_${bulkNewStatus}`,
+        changes: { to: bulkNewStatus },
+      }));
+      await supabase.from('mou_history').insert(historyEntries);
+
+      // Update local state
+      setMous(prev => prev.map(mou => 
+        selectedMouIds.includes(mou.id) 
+          ? { ...mou, status: bulkNewStatus as MOU['status'] }
+          : mou
+      ));
+
+      toast({ 
+        title: 'Status Updated', 
+        description: `Updated ${selectedMouIds.length} MOUs to "${bulkNewStatus.replace('_', ' ')}"` 
+      });
+      setSelectedMouIds([]);
+      setBulkStatusDialog(false);
+      setBulkNewStatus('');
+    } catch (error) {
+      console.error('Error updating MOUs:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update MOUs', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMouIds.length === 0) return;
+    setIsBulkUpdating(true);
+
+    try {
+      // First delete related history
+      await supabase
+        .from('mou_history')
+        .delete()
+        .in('mou_id', selectedMouIds);
+
+      // Then delete MOUs
+      const { error } = await supabase
+        .from('mous')
+        .delete()
+        .in('id', selectedMouIds);
+
+      if (error) throw error;
+
+      // Update local state
+      setMous(prev => prev.filter(mou => !selectedMouIds.includes(mou.id)));
+
+      toast({ 
+        title: 'Deleted', 
+        description: `Deleted ${selectedMouIds.length} MOUs` 
+      });
+      setSelectedMouIds([]);
+      setBulkDeleteDialog(false);
+    } catch (error) {
+      console.error('Error deleting MOUs:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to delete MOUs', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -673,87 +785,190 @@ function ExistingMOUsList({
     return null;
   }
 
+  const allStatuses = ['draft', 'pending', 'pending_review', 'pending_approval', 'counter_proposed', 'revised', 'accepted', 'rejected'];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Existing MOUs
-          <Badge variant="outline" className="ml-2">{mous.length}</Badge>
-        </CardTitle>
-        <CardDescription>
-          View and manage your existing memorandums of understanding
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search by partner name or country..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border shadow-lg z-50">
-              <SelectItem value="all">All Statuses</SelectItem>
-              {uniqueStatuses.map(status => (
-                <SelectItem key={status} value={status} className="capitalize">
-                  {status.replace('_', ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Results count */}
-        {(searchQuery || statusFilter !== 'all') && (
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredMous.length} of {mous.length} MOUs
-          </p>
-        )}
-
-        {/* MOU List */}
-        <div className="space-y-2">
-          {filteredMous.length > 0 ? (
-            filteredMous.map((mou) => (
-              <div
-                key={mou.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-                onClick={() => onSelectMOU(mou.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{getPartnerName(mou)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {getPartnerCountry(mou)} • {mou.cooperation_scope?.length || 0} cooperation areas
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={getStatusBadge(mou.status)} className="capitalize">
-                    {mou.status.replace('_', ' ')}
-                  </Badge>
-                  <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
-                </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Existing MOUs
+            <Badge variant="outline" className="ml-2">{mous.length}</Badge>
+          </CardTitle>
+          <CardDescription>
+            View and manage your existing memorandums of understanding
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Bulk Actions Bar */}
+          {selectedMouIds.length > 0 && (
+            <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20 animate-fade-in">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  checked={selectedMouIds.length === filteredMous.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span className="text-sm font-medium">
+                  {selectedMouIds.length} selected
+                </span>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No MOUs match your search criteria</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBulkStatusDialog(true)}
+                >
+                  <MoreHorizontal className="h-4 w-4 mr-1" />
+                  Update Status
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setBulkDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
             </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by partner name or country..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="all">All Statuses</SelectItem>
+                {uniqueStatuses.map(status => (
+                  <SelectItem key={status} value={status} className="capitalize">
+                    {status.replace('_', ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Results count */}
+          {(searchQuery || statusFilter !== 'all') && (
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredMous.length} of {mous.length} MOUs
+            </p>
+          )}
+
+          {/* MOU List */}
+          <div className="space-y-2">
+            {filteredMous.length > 0 ? (
+              filteredMous.map((mou) => (
+                <div
+                  key={mou.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
+                    selectedMouIds.includes(mou.id) ? 'bg-primary/5 border-primary/30' : ''
+                  }`}
+                  onClick={() => onSelectMOU(mou.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selectedMouIds.includes(mou.id)}
+                      onCheckedChange={() => {}}
+                      onClick={(e) => toggleSelectMou(mou.id, e)}
+                    />
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{getPartnerName(mou)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getPartnerCountry(mou)} • {mou.cooperation_scope?.length || 0} cooperation areas
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getStatusBadge(mou.status)} className="capitalize">
+                      {mou.status.replace('_', ' ')}
+                    </Badge>
+                    <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No MOUs match your search criteria</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bulk Status Update Dialog */}
+      <AlertDialog open={bulkStatusDialog} onOpenChange={setBulkStatusDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Status for {selectedMouIds.length} MOUs</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select the new status to apply to all selected MOUs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Select value={bulkNewStatus} onValueChange={setBulkNewStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select new status..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                {allStatuses.map(status => (
+                  <SelectItem key={status} value={status} className="capitalize">
+                    {status.replace('_', ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkUpdating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkStatusUpdate}
+              disabled={!bulkNewStatus || isBulkUpdating}
+            >
+              {isBulkUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedMouIds.length} MOUs?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All selected MOUs and their history will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkUpdating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete}
+              disabled={isBulkUpdating}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
