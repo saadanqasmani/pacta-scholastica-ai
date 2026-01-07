@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
 import Mobility from "./pages/Mobility";
+import MOUManagement from "./pages/MOUManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/mobility" element={<Mobility />} />
+              <Route path="/mou" element={<MOUManagement />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MainLayout>
