@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useUniversity } from '@/contexts/UniversityContext';
 import { useAIEvaluation } from '@/hooks/useAIEvaluation';
 import { PartnerRecommendation, University } from '@/types/database';
 import { PartnerCard } from '@/components/partners/PartnerCard';
+import { UniversityProfileModal } from '@/components/partners/UniversityProfileModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,6 +30,8 @@ export default function Partners() {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'recommended' | 'all'>('recommended');
+  const [selectedProfileUniversity, setSelectedProfileUniversity] = useState<University | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -59,9 +62,9 @@ export default function Partners() {
   }) || [];
 
   const handleInitiateMOU = (universityName: string) => {
-    // Find the university ID
     const partner = universities.find(u => u.name === universityName);
     if (partner) {
+      setIsProfileModalOpen(false);
       navigate(`/mou?partner=${partner.id}`);
     } else {
       toast({
@@ -70,6 +73,19 @@ export default function Partners() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleViewProfile = (universityName: string) => {
+    const university = universities.find(u => u.name === universityName);
+    if (university) {
+      setSelectedProfileUniversity(university);
+      setIsProfileModalOpen(true);
+    }
+  };
+
+  const handleCardClick = (university: University) => {
+    setSelectedProfileUniversity(university);
+    setIsProfileModalOpen(true);
   };
 
   if (universitiesLoading) {
@@ -189,6 +205,7 @@ export default function Partners() {
                   key={index}
                   recommendation={rec}
                   onInitiateMOU={handleInitiateMOU}
+                  onViewProfile={handleViewProfile}
                 />
               ))}
             </div>
@@ -215,7 +232,11 @@ export default function Partners() {
           </div>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredUniversities.map((university) => (
-              <Card key={university.id} className="transition-shadow hover:shadow-md">
+              <Card 
+                key={university.id} 
+                className="transition-all hover:shadow-md cursor-pointer hover:border-primary/50"
+                onClick={() => handleCardClick(university)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
@@ -231,23 +252,51 @@ export default function Partners() {
                         <Badge variant="secondary" className="text-xs capitalize">
                           {university.internationalization_maturity}
                         </Badge>
+                        {university.ranking && (
+                          <Badge variant="default" className="text-xs">
+                            #{university.ranking}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="w-full mt-3"
-                    onClick={() => handleInitiateMOU(university.name)}
-                  >
-                    Initiate MOU
-                  </Button>
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardClick(university);
+                      }}
+                    >
+                      View Profile
+                    </Button>
+                    <Button 
+                      size="sm"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInitiateMOU(university.name);
+                      }}
+                    >
+                      Initiate MOU
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       )}
+
+      {/* University Profile Modal */}
+      <UniversityProfileModal
+        university={selectedProfileUniversity}
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onInitiateMOU={handleInitiateMOU}
+      />
     </div>
   );
 }

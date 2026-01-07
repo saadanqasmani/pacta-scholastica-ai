@@ -258,39 +258,114 @@ export type Database = {
           },
         ]
       }
+      partner_roi: {
+        Row: {
+          created_at: string
+          grant_funding_usd: number | null
+          id: string
+          joint_publications: number | null
+          partner_university_id: string
+          partnership_year: number
+          research_collaborations: number | null
+          satisfaction_score: number | null
+          student_exchange_count: number | null
+          university_id: string
+        }
+        Insert: {
+          created_at?: string
+          grant_funding_usd?: number | null
+          id?: string
+          joint_publications?: number | null
+          partner_university_id: string
+          partnership_year: number
+          research_collaborations?: number | null
+          satisfaction_score?: number | null
+          student_exchange_count?: number | null
+          university_id: string
+        }
+        Update: {
+          created_at?: string
+          grant_funding_usd?: number | null
+          id?: string
+          joint_publications?: number | null
+          partner_university_id?: string
+          partnership_year?: number
+          research_collaborations?: number | null
+          satisfaction_score?: number | null
+          student_exchange_count?: number | null
+          university_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_roi_partner_university_id_fkey"
+            columns: ["partner_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_roi_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       universities: {
         Row: {
+          accreditations: string[] | null
           country: string
           created_at: string
+          educational_union: string | null
+          founded_year: number | null
           id: string
           internationalization_maturity: string
+          journals: string[] | null
           name: string
+          ranking: number | null
           region: string
+          research_strengths: string[] | null
           size: string
           type: string
           updated_at: string
+          website: string | null
         }
         Insert: {
+          accreditations?: string[] | null
           country: string
           created_at?: string
+          educational_union?: string | null
+          founded_year?: number | null
           id?: string
           internationalization_maturity: string
+          journals?: string[] | null
           name: string
+          ranking?: number | null
           region: string
+          research_strengths?: string[] | null
           size: string
           type: string
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          accreditations?: string[] | null
           country?: string
           created_at?: string
+          educational_union?: string | null
+          founded_year?: number | null
           id?: string
           internationalization_maturity?: string
+          journals?: string[] | null
           name?: string
+          ranking?: number | null
           region?: string
+          research_strengths?: string[] | null
           size?: string
           type?: string
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
