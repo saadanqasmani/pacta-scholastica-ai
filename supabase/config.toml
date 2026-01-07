@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.partner-advisor]
 verify_jwt = false
+
+[functions.market-intelligence]
+verify_jwt = false
