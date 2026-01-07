@@ -8,6 +8,13 @@ export interface University {
   type: 'public' | 'private';
   size: 'small' | 'medium' | 'large';
   internationalization_maturity: 'low' | 'medium' | 'high';
+  ranking?: number;
+  educational_union?: string;
+  journals?: string[];
+  research_strengths?: string[];
+  accreditations?: string[];
+  founded_year?: number;
+  website?: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +70,19 @@ export interface MobilityRecord {
   student_count: number;
   academic_year: string;
   completion_status: 'ongoing' | 'completed' | 'cancelled';
+  created_at: string;
+}
+
+export interface PartnerROI {
+  id: string;
+  university_id: string;
+  partner_university_id: string;
+  partnership_year: number;
+  student_exchange_count: number;
+  research_collaborations: number;
+  joint_publications: number;
+  grant_funding_usd: number;
+  satisfaction_score: number;
   created_at: string;
 }
 

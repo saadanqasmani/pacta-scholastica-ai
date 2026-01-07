@@ -1,26 +1,34 @@
-import { University, PartnerRecommendation } from '@/types/database';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MapPin, Building2, Handshake, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Building2, 
+  ChevronDown, 
+  ChevronUp, 
+  Handshake, 
+  Eye,
+  MapPin 
+} from 'lucide-react';
+import { PartnerRecommendation } from '@/types/database';
 
 interface PartnerCardProps {
   recommendation: PartnerRecommendation;
-  onInitiateMOU?: (universityName: string) => void;
+  onInitiateMOU: (universityName: string) => void;
+  onViewProfile?: (universityName: string) => void;
 }
 
-export function PartnerCard({ recommendation, onInitiateMOU }: PartnerCardProps) {
+export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: PartnerCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getScoreColor = (score: number) => {
     if (score >= 85) return 'text-primary bg-primary/10';
-    if (score >= 70) return 'text-info bg-info/10';
+    if (score >= 70) return 'text-amber-600 bg-amber-500/10';
     return 'text-muted-foreground bg-muted';
   };
 
   return (
-    <Card className="transition-shadow hover:shadow-md">
+    <Card className="transition-all hover:shadow-md">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1">
@@ -92,18 +100,30 @@ export function PartnerCard({ recommendation, onInitiateMOU }: PartnerCardProps)
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="mt-4 flex items-center justify-between">
+        {/* Action Buttons */}
+        <div className="mt-4 flex items-center justify-between gap-2">
           <Badge variant="outline" className="text-xs">
             AI Recommended
           </Badge>
-          <Button 
-            size="sm" 
-            onClick={() => onInitiateMOU?.(recommendation.university_name)}
-          >
-            <Handshake className="h-4 w-4 mr-1" />
-            Initiate MOU
-          </Button>
+          <div className="flex gap-2">
+            {onViewProfile && (
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => onViewProfile(recommendation.university_name)}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                Profile
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={() => onInitiateMOU(recommendation.university_name)}
+            >
+              <Handshake className="h-4 w-4 mr-1" />
+              Initiate MOU
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
