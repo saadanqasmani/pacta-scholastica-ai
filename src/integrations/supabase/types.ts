@@ -258,6 +258,171 @@ export type Database = {
           },
         ]
       }
+      partner_messages: {
+        Row: {
+          created_at: string
+          from_university_id: string
+          id: string
+          is_read: boolean
+          message: string
+          message_type: string
+          subject: string
+          to_university_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_university_id: string
+          id?: string
+          is_read?: boolean
+          message: string
+          message_type?: string
+          subject: string
+          to_university_id: string
+        }
+        Update: {
+          created_at?: string
+          from_university_id?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          message_type?: string
+          subject?: string
+          to_university_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_messages_from_university_id_fkey"
+            columns: ["from_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_messages_to_university_id_fkey"
+            columns: ["to_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_projects: {
+        Row: {
+          budget_usd: number | null
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          partner_university_id: string
+          progress: number
+          project_name: string
+          project_type: string
+          start_date: string | null
+          status: string
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          budget_usd?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          partner_university_id: string
+          progress?: number
+          project_name: string
+          project_type: string
+          start_date?: string | null
+          status?: string
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          budget_usd?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          partner_university_id?: string
+          progress?: number
+          project_name?: string
+          project_type?: string
+          start_date?: string | null
+          status?: string
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_projects_partner_university_id_fkey"
+            columns: ["partner_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_projects_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_requests: {
+        Row: {
+          created_at: string
+          from_university_id: string
+          id: string
+          message: string
+          priority: string
+          request_type: string
+          responded_at: string | null
+          status: string
+          subject: string
+          to_university_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_university_id: string
+          id?: string
+          message: string
+          priority?: string
+          request_type?: string
+          responded_at?: string | null
+          status?: string
+          subject: string
+          to_university_id: string
+        }
+        Update: {
+          created_at?: string
+          from_university_id?: string
+          id?: string
+          message?: string
+          priority?: string
+          request_type?: string
+          responded_at?: string | null
+          status?: string
+          subject?: string
+          to_university_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_requests_from_university_id_fkey"
+            columns: ["from_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_requests_to_university_id_fkey"
+            columns: ["to_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_roi: {
         Row: {
           created_at: string
