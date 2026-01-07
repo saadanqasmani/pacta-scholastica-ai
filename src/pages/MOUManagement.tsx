@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +31,8 @@ import {
   Save,
   Plus,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  Globe
 } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -291,14 +299,73 @@ export default function MOUManagement() {
     );
   }
 
+  // Available partners (exclude self)
+  const availablePartners = universities.filter(u => u.id !== selectedUniversity?.id);
+
   if (!partner) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center">
-        <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
-        <p className="text-muted-foreground mb-4">No partner selected</p>
-        <Button onClick={() => navigate('/partners')}>
-          Select a Partner
-        </Button>
+      <div className="space-y-6 animate-fade-in">
+        {/* Page Header */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight">MOU Management</h1>
+          <p className="text-muted-foreground">
+            Draft, negotiate, and finalize memorandums of understanding
+          </p>
+        </div>
+
+        {/* Partner Selection Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Select a Partner University
+            </CardTitle>
+            <CardDescription>
+              Choose a partner university to create or manage an MOU
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Select
+              value=""
+              onValueChange={(value) => {
+                const selectedPartner = universities.find(u => u.id === value);
+                if (selectedPartner) {
+                  setPartner(selectedPartner);
+                  navigate(`/mou?partner=${value}`);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Select a partner university..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50 max-h-[300px]">
+                {availablePartners.map((uni) => (
+                  <SelectItem key={uni.id} value={uni.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{uni.name}</span>
+                      <span className="text-muted-foreground text-xs">({uni.country})</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="text-sm text-muted-foreground">
+              Or browse partners on the{' '}
+              <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/partners')}>
+                Partner Discovery
+              </Button>{' '}
+              page to find the right match.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Existing MOUs Section */}
+        <ExistingMOUsList 
+          universityId={selectedUniversity?.id} 
+          universities={universities}
+          onSelectMOU={(mouId) => navigate(`/mou?mou=${mouId}`)}
+        />
       </div>
     );
   }
@@ -505,5 +572,120 @@ export default function MOUManagement() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Component to show existing MOUs
+function ExistingMOUsList({ 
+  universityId, 
+  universities,
+  onSelectMOU 
+}: { 
+  universityId?: string; 
+  universities: University[];
+  onSelectMOU: (mouId: string) => void;
+}) {
+  const [mous, setMous] = useState<MOU[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!universityId) return;
+
+    const fetchMOUs = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('mous')
+          .select('*')
+          .or(`initiator_university_id.eq.${universityId},partner_university_id.eq.${universityId}`)
+          .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+        setMous((data || []) as unknown as MOU[]);
+      } catch (error) {
+        console.error('Error fetching MOUs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMOUs();
+  }, [universityId]);
+
+  const getPartnerName = (mou: MOU) => {
+    const partnerId = mou.initiator_university_id === universityId 
+      ? mou.partner_university_id 
+      : mou.initiator_university_id;
+    const partner = universities.find(u => u.id === partnerId);
+    return partner?.name || 'Unknown Partner';
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+      draft: 'secondary',
+      pending: 'outline',
+      pending_review: 'outline',
+      pending_approval: 'outline',
+      counter_proposed: 'outline',
+      revised: 'outline',
+      accepted: 'default',
+      rejected: 'destructive',
+    };
+    return variants[status] || 'secondary';
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (mous.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Existing MOUs
+        </CardTitle>
+        <CardDescription>
+          View and manage your existing memorandums of understanding
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {mous.map((mou) => (
+            <div
+              key={mou.id}
+              className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+              onClick={() => onSelectMOU(mou.id)}
+            >
+              <div className="flex items-center gap-3">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{getPartnerName(mou)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {mou.cooperation_scope?.length || 0} cooperation areas
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={getStatusBadge(mou.status)} className="capitalize">
+                  {mou.status.replace('_', ' ')}
+                </Badge>
+                <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
