@@ -86,6 +86,46 @@ export interface PartnerROI {
   created_at: string;
 }
 
+export interface PartnerRequest {
+  id: string;
+  from_university_id: string;
+  to_university_id: string;
+  request_type: string;
+  subject: string;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  priority: 'low' | 'normal' | 'high';
+  created_at: string;
+  responded_at?: string;
+}
+
+export interface PartnerProject {
+  id: string;
+  university_id: string;
+  partner_university_id: string;
+  project_name: string;
+  project_type: string;
+  description?: string;
+  status: 'planning' | 'active' | 'completed' | 'paused' | 'cancelled';
+  progress: number;
+  start_date?: string;
+  end_date?: string;
+  budget_usd?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartnerMessage {
+  id: string;
+  from_university_id: string;
+  to_university_id: string;
+  subject: string;
+  message: string;
+  message_type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface AIEvaluation {
   id: string;
   university_id: string;

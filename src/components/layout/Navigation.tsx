@@ -13,6 +13,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/profile', label: 'University Profile', icon: Building2 },
   { to: '/partners', label: 'Partner Discovery', icon: Handshake },
+  { to: '/partnerships', label: 'Partnership Management', icon: Handshake },
   { to: '/mobility', label: 'Mobility Tracking', icon: Plane },
   { to: '/mou', label: 'MOU Management', icon: FileText },
   { to: '/intelligence', label: 'Market Intelligence', icon: TrendingUp },
