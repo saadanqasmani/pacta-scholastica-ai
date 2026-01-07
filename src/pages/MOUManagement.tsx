@@ -32,7 +32,8 @@ import {
   Plus,
   RefreshCw,
   CheckCircle,
-  Globe
+  Globe,
+  Search
 } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -587,6 +588,8 @@ function ExistingMOUsList({
 }) {
   const [mous, setMous] = useState<MOU[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!universityId) return;
@@ -620,6 +623,14 @@ function ExistingMOUsList({
     return partner?.name || 'Unknown Partner';
   };
 
+  const getPartnerCountry = (mou: MOU) => {
+    const partnerId = mou.initiator_university_id === universityId 
+      ? mou.partner_university_id 
+      : mou.initiator_university_id;
+    const partner = universities.find(u => u.id === partnerId);
+    return partner?.country || '';
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
       draft: 'secondary',
@@ -633,6 +644,20 @@ function ExistingMOUsList({
     };
     return variants[status] || 'secondary';
   };
+
+  // Filter MOUs based on search and status
+  const filteredMous = mous.filter(mou => {
+    const partnerName = getPartnerName(mou).toLowerCase();
+    const partnerCountry = getPartnerCountry(mou).toLowerCase();
+    const matchesSearch = searchQuery === '' || 
+      partnerName.includes(searchQuery.toLowerCase()) ||
+      partnerCountry.includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || mou.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Get unique statuses for filter
+  const uniqueStatuses = [...new Set(mous.map(m => m.status))];
 
   if (isLoading) {
     return (
@@ -654,36 +679,79 @@ function ExistingMOUsList({
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
           Existing MOUs
+          <Badge variant="outline" className="ml-2">{mous.length}</Badge>
         </CardTitle>
         <CardDescription>
           View and manage your existing memorandums of understanding
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search by partner name or country..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border shadow-lg z-50">
+              <SelectItem value="all">All Statuses</SelectItem>
+              {uniqueStatuses.map(status => (
+                <SelectItem key={status} value={status} className="capitalize">
+                  {status.replace('_', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Results count */}
+        {(searchQuery || statusFilter !== 'all') && (
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredMous.length} of {mous.length} MOUs
+          </p>
+        )}
+
+        {/* MOU List */}
         <div className="space-y-2">
-          {mous.map((mou) => (
-            <div
-              key={mou.id}
-              className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-              onClick={() => onSelectMOU(mou.id)}
-            >
-              <div className="flex items-center gap-3">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{getPartnerName(mou)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {mou.cooperation_scope?.length || 0} cooperation areas
-                  </p>
+          {filteredMous.length > 0 ? (
+            filteredMous.map((mou) => (
+              <div
+                key={mou.id}
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => onSelectMOU(mou.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{getPartnerName(mou)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getPartnerCountry(mou)} • {mou.cooperation_scope?.length || 0} cooperation areas
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={getStatusBadge(mou.status)} className="capitalize">
+                    {mou.status.replace('_', ' ')}
+                  </Badge>
+                  <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={getStatusBadge(mou.status)} className="capitalize">
-                  {mou.status.replace('_', ' ')}
-                </Badge>
-                <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
-              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No MOUs match your search criteria</p>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>
