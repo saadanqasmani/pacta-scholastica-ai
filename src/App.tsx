@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
+import Mobility from "./pages/Mobility";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/partners" element={<Partners />} />
+              <Route path="/mobility" element={<Mobility />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MainLayout>
