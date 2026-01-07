@@ -1,4 +1,4 @@
-import { Building2, ChevronDown } from 'lucide-react';
+import { Eye, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,11 +23,11 @@ export function Header() {
         {/* Logo and Title */}
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
+            <Eye className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">IARSMS</h1>
-            <p className="text-xs text-muted-foreground">International Academic Relations</p>
+            <h1 className="text-lg font-semibold tracking-tight">IRIS</h1>
+            <p className="text-xs text-muted-foreground">International Relations Intelligent System</p>
           </div>
         </div>
 
