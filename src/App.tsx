@@ -11,6 +11,7 @@ import Partners from "./pages/Partners";
 import Mobility from "./pages/Mobility";
 import MOUManagement from "./pages/MOUManagement";
 import PartnershipManagement from "./pages/PartnershipManagement";
+import MarketIntelligence from "./pages/MarketIntelligence";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/mobility" element={<Mobility />} />
               <Route path="/mou" element={<MOUManagement />} />
               <Route path="/partnerships" element={<PartnershipManagement />} />
+              <Route path="/intelligence" element={<MarketIntelligence />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MainLayout>
