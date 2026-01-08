@@ -38,8 +38,55 @@ import {
 // Years available
 const years = ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021'];
 
+// Helpers
+
+type Totals = {
+  acceptanceLetters: number;
+  registered: number;
+  frozen: number;
+  transfer: number;
+  deleted: number;
+  graduated: number;
+};
+
+const normalizeToTotal = (values: number[], targetTotal: number) => {
+  const safeTarget = Math.max(0, Math.floor(targetTotal));
+  const safeValues = values.map((v) => Math.max(0, Number.isFinite(v) ? v : 0));
+  const sum = safeValues.reduce((a, b) => a + b, 0);
+
+  if (sum === 0) return safeValues.map(() => 0);
+  if (safeTarget === sum) return safeValues;
+
+  const scaled = safeValues.map((v) => (v / sum) * safeTarget);
+  const floors = scaled.map((v) => Math.floor(v));
+  let remainder = safeTarget - floors.reduce((a, b) => a + b, 0);
+
+  const order = scaled
+    .map((v, idx) => ({ idx, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac);
+
+  const result = [...floors];
+  for (let i = 0; i < order.length && remainder > 0; i += 1) {
+    result[order[i].idx] += 1;
+    remainder -= 1;
+  }
+  return result;
+};
+
+const isKocUniversityName = (name?: string | null) => {
+  if (!name) return false;
+  const normalized = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return normalized.includes('koc');
+};
+
 // Generate country data with year-specific variations
-const generateCountryDataForYear = (year: string) => {
+const generateCountryDataForYear = (
+  year: string,
+  opts?: { targetRegisteredTotal?: number; maxCountries?: number }
+) => {
   const baseCountries = [
     { name: 'Syria', base: 412 },
     { name: 'Iran', base: 387 },
@@ -67,7 +114,7 @@ const generateCountryDataForYear = (year: string) => {
     { name: 'Ghana', base: 45 },
     { name: 'Cameroon', base: 42 },
     { name: 'Senegal', base: 38 },
-    { name: 'Côte d\'Ivoire', base: 35 },
+    { name: "Côte d'Ivoire", base: 35 },
     { name: 'Mali', base: 32 },
     { name: 'Burkina Faso', base: 28 },
     { name: 'Niger', base: 25 },
@@ -140,25 +187,33 @@ const generateCountryDataForYear = (year: string) => {
   ];
 
   // Year multiplier for variation
-  const yearIndex = years.indexOf(year);
-  const multiplier = 1 - (yearIndex * 0.08); // Older years have fewer students
+  const yearIndex = Math.max(0, years.indexOf(year));
+  const multiplier = 1 - yearIndex * 0.08; // Older years have fewer students
 
-  return baseCountries.map(c => {
-    const registered = Math.floor(c.base * multiplier);
+  const countries = typeof opts?.maxCountries === 'number' ? baseCountries.slice(0, opts.maxCountries) : baseCountries;
+
+  const rawRegistered = countries.map((c) => Math.max(0, Math.floor(c.base * multiplier)));
+  const registeredValues =
+    typeof opts?.targetRegisteredTotal === 'number'
+      ? normalizeToTotal(rawRegistered, opts.targetRegisteredTotal)
+      : rawRegistered;
+
+  return countries.map((c, idx) => {
+    const registered = registeredValues[idx];
     return {
       name: c.name,
-      acceptanceLetters: Math.floor(registered * 1.35),
+      acceptanceLetters: Math.round(registered * 1.35),
       registered,
-      frozen: Math.floor(registered * 0.04),
-      transfer: Math.floor(registered * 0.07),
-      deleted: Math.floor(registered * 0.035),
-      graduated: Math.floor(registered * 0.18),
+      frozen: Math.round(registered * 0.04),
+      transfer: Math.round(registered * 0.07),
+      deleted: Math.round(registered * 0.035),
+      graduated: Math.round(registered * 0.18),
     };
   });
 };
 
 // 20 recruitment agencies with year variations
-const generateAgencyDataForYear = (year: string) => {
+const generateAgencyDataForYear = (year: string, opts?: { targetStudentsTotal?: number }) => {
   const baseAgencies = [
     { name: 'United Education', base: 423, countries: ['Syria', 'Iraq', 'Jordan'], commission: 15 },
     { name: 'Global Study Partners', base: 387, countries: ['Iran', 'Azerbaijan', 'Turkmenistan'], commission: 12 },
@@ -182,12 +237,18 @@ const generateAgencyDataForYear = (year: string) => {
     { name: 'Global Campus', base: 38, countries: ['Mexico', 'Colombia', 'Chile'], commission: 11 },
   ];
 
-  const yearIndex = years.indexOf(year);
-  const multiplier = 1 - (yearIndex * 0.08);
+  const yearIndex = Math.max(0, years.indexOf(year));
+  const multiplier = 1 - yearIndex * 0.08;
 
-  return baseAgencies.map(a => ({
+  const rawStudents = baseAgencies.map((a) => Math.max(0, Math.floor(a.base * multiplier)));
+  const studentsValues =
+    typeof opts?.targetStudentsTotal === 'number'
+      ? normalizeToTotal(rawStudents, opts.targetStudentsTotal)
+      : rawStudents;
+
+  return baseAgencies.map((a, idx) => ({
     ...a,
-    students: Math.floor(a.base * multiplier),
+    students: studentsValues[idx],
   }));
 };
 
@@ -208,16 +269,84 @@ interface AgencyStats {
   commission: number;
 }
 
+const normalizeAgencyStudents = (agencies: AgencyStats[], targetTotal: number): AgencyStats[] => {
+  const normalized = normalizeToTotal(
+    agencies.map((a) => Math.max(0, a.students)),
+    targetTotal
+  );
+  return agencies.map((a, idx) => ({ ...a, students: normalized[idx] }));
+};
+
 // Market Intelligence Component
-function MarketIntelligenceTab() {
+function MarketIntelligenceTab(props: {
+  isDummy?: boolean;
+  totals?: Totals;
+  countryStats?: CountryStats[];
+  year?: string;
+}) {
+  const { isDummy, totals, countryStats, year } = props;
+
   const { selectedUniversity } = useUniversity();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const buildDummyAnalysis = () => {
+    const totalApplications = totals?.acceptanceLetters ?? 0;
+    const registered = totals?.registered ?? 0;
+    const averageConversion = totalApplications > 0 ? (registered / totalApplications) * 100 : 0;
+
+    const top = [...(countryStats ?? [])]
+      .sort((a, b) => b.registered - a.registered)
+      .slice(0, 12);
+
+    const recommendations = top.map((c, idx) => {
+      const conversion = c.acceptanceLetters > 0 ? (c.registered / c.acceptanceLetters) * 100 : 0;
+
+      const action = idx < 5 ? 'scale' : idx < 9 ? 'pause' : 'exit';
+      const riskLevel = idx < 5 ? 'low' : idx < 9 ? 'medium' : 'high';
+      const confidence = Math.max(55, Math.min(95, Math.round(conversion)));
+
+      return {
+        country: c.name,
+        action,
+        riskLevel,
+        confidence,
+        reasoning: `Based on ${c.registered.toLocaleString()} registered students (${conversion.toFixed(1)}% conversion) for ${year ?? 'this year'}.`,
+      };
+    });
+
+    return {
+      summary: {
+        totalApplications,
+        averageConversion,
+        marketsToScale: recommendations.filter((r) => r.action === 'scale').length,
+        marketsToPause: recommendations.filter((r) => r.action === 'pause').length,
+        marketsToExit: recommendations.filter((r) => r.action === 'exit').length,
+      },
+      recommendations,
+    };
+  };
+
   const generateAnalysis = async () => {
     if (!selectedUniversity?.id) return;
+
+    // Dummy mode for Koç: keep the intelligence numbers aligned with the country/agency tabs.
+    if (isDummy) {
+      setIsLoading(true);
+      try {
+        const dummy = buildDummyAnalysis();
+        setAnalysis(dummy);
+        toast({
+          title: t('recruitment.analysisComplete'),
+          description: t('recruitment.analysisCompleteDesc'),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -249,7 +378,8 @@ function MarketIntelligenceTab() {
     if (selectedUniversity?.id) {
       generateAnalysis();
     }
-  }, [selectedUniversity?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUniversity?.id, isDummy, totals?.registered, totals?.acceptanceLetters, year, countryStats?.length]);
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -403,6 +533,9 @@ export default function Recruitment() {
   const { selectedUniversity } = useUniversity();
   const { t } = useLanguage();
   const { toast } = useToast();
+
+  const isKoc = isKocUniversityName(selectedUniversity?.name);
+
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [countryStats, setCountryStats] = useState<CountryStats[]>([]);
   const [agencyStats, setAgencyStats] = useState<AgencyStats[]>([]);
@@ -411,9 +544,23 @@ export default function Recruitment() {
 
   // Load data when year changes
   useEffect(() => {
-    setCountryStats(generateCountryDataForYear(selectedYear));
-    setAgencyStats(generateAgencyDataForYear(selectedYear));
-  }, [selectedYear]);
+    const yearIndex = Math.max(0, years.indexOf(selectedYear));
+    const multiplier = 1 - yearIndex * 0.08;
+
+    // Only enforce the Koç "5,000 students" requirement in dummy mode.
+    const targetRegisteredTotal = isKoc ? Math.round(5000 * multiplier) : undefined;
+    const maxCountries = isKoc ? 96 : undefined;
+
+    const countries = generateCountryDataForYear(selectedYear, {
+      targetRegisteredTotal,
+      maxCountries,
+    });
+
+    const registeredTotal = countries.reduce((acc, c) => acc + c.registered, 0);
+
+    setCountryStats(countries);
+    setAgencyStats(generateAgencyDataForYear(selectedYear, { targetStudentsTotal: registeredTotal }));
+  }, [selectedYear, isKoc]);
 
   // Calculate totals
   const totals = countryStats.reduce((acc, c) => ({
@@ -442,6 +589,9 @@ export default function Recruitment() {
   };
 
   const saveChanges = () => {
+    // Keep agency totals aligned with the country tab's registered total.
+    setAgencyStats((prev) => normalizeAgencyStudents(prev, totals.registered));
+
     setEditMode(false);
     toast({
       title: t('recruitment.saved'),
