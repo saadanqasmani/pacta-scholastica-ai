@@ -237,7 +237,7 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 2048,
+        max_tokens: 4096,
         temperature: 0.7,
       }),
     });
@@ -263,16 +263,43 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
     const aiResponse = await response.json();
     let content = aiResponse.choices?.[0]?.message?.content || "";
 
+    console.log("Raw AI response length:", content.length);
+
     // Clean up the response - remove markdown code blocks if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-    // Parse the JSON
+    // Try to fix incomplete JSON by finding the last complete object
     let evaluationData;
     try {
       evaluationData = JSON.parse(content);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI evaluation response");
+      console.log("Initial parse failed, attempting to repair JSON...");
+      
+      // Try to find the last complete closing brace
+      let fixedContent = content;
+      
+      // Count braces to find if JSON is incomplete
+      const openBraces = (fixedContent.match(/{/g) || []).length;
+      const closeBraces = (fixedContent.match(/}/g) || []).length;
+      const openBrackets = (fixedContent.match(/\[/g) || []).length;
+      const closeBrackets = (fixedContent.match(/]/g) || []).length;
+      
+      // Add missing closing brackets and braces
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        fixedContent += "]";
+      }
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        fixedContent += "}";
+      }
+      
+      // Try parsing the fixed content
+      try {
+        evaluationData = JSON.parse(fixedContent);
+        console.log("JSON repair successful");
+      } catch (e) {
+        console.error("Failed to parse AI response after repair:", content.substring(0, 500));
+        throw new Error("Failed to parse AI evaluation response");
+      }
     }
 
     // Cache the evaluation
