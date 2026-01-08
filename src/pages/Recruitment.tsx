@@ -33,7 +33,10 @@ import {
   Save,
   Edit2,
   Calendar,
+  Wrench,
+  ShieldCheck,
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Years available
 const years = ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021'];
@@ -574,6 +577,20 @@ export default function Recruitment() {
 
   const agencyTotals = agencyStats.reduce((acc, a) => acc + a.students, 0);
 
+  // Data Consistency Check
+  const hasInconsistency = agencyTotals !== totals.registered;
+  const discrepancy = Math.abs(agencyTotals - totals.registered);
+  const discrepancyPercent = totals.registered > 0 ? ((discrepancy / totals.registered) * 100).toFixed(1) : '0';
+
+  const autoFixConsistency = () => {
+    // Normalize agency students to match country registered total
+    setAgencyStats((prev) => normalizeAgencyStudents(prev, totals.registered));
+    toast({
+      title: t('recruitment.consistencyFixed'),
+      description: t('recruitment.consistencyFixedDesc'),
+    });
+  };
+
   const handleCountryChange = (countryName: string, field: keyof CountryStats, value: string) => {
     const numValue = parseInt(value) || 0;
     setCountryStats(prev => prev.map(c => 
@@ -718,6 +735,39 @@ export default function Recruitment() {
           </CardHeader>
         </Card>
       </div>
+
+      {/* Data Consistency Banner */}
+      {hasInconsistency && (
+        <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="flex items-center justify-between">
+            <span>{t('recruitment.dataInconsistency')}</span>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={autoFixConsistency}
+              className="ml-4 border-yellow-500/50 hover:bg-yellow-500/20"
+            >
+              <Wrench className="mr-2 h-3 w-3" />
+              {t('recruitment.autoFix')}
+            </Button>
+          </AlertTitle>
+          <AlertDescription>
+            Agency total ({agencyTotals.toLocaleString()}) ≠ Country registered ({totals.registered.toLocaleString()}). 
+            Difference: {discrepancy.toLocaleString()} ({discrepancyPercent}%)
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!hasInconsistency && (
+        <Alert className="border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400">
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>{t('recruitment.dataConsistent')}</AlertTitle>
+          <AlertDescription>
+            All tabs reconcile to {totals.registered.toLocaleString()} registered students.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue="countries" className="space-y-4">
         <TabsList>
