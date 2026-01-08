@@ -49,6 +49,56 @@ export type Database = {
           },
         ]
       }
+      courses: {
+        Row: {
+          course_code: string
+          course_name: string
+          created_at: string
+          credits: number
+          department: string | null
+          description: string | null
+          ects_credits: number | null
+          id: string
+          language: string | null
+          level: string | null
+          university_id: string
+        }
+        Insert: {
+          course_code: string
+          course_name: string
+          created_at?: string
+          credits?: number
+          department?: string | null
+          description?: string | null
+          ects_credits?: number | null
+          id?: string
+          language?: string | null
+          level?: string | null
+          university_id: string
+        }
+        Update: {
+          course_code?: string
+          course_name?: string
+          created_at?: string
+          credits?: number
+          department?: string | null
+          description?: string | null
+          ects_credits?: number | null
+          id?: string
+          language?: string | null
+          level?: string | null
+          university_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string
@@ -103,6 +153,134 @@ export type Database = {
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_exchanges: {
+        Row: {
+          created_at: string
+          department: string | null
+          end_date: string | null
+          exchange_type: string
+          faculty_email: string | null
+          faculty_name: string
+          host_university_id: string
+          id: string
+          outcomes: string | null
+          purpose: string | null
+          start_date: string | null
+          status: string
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          end_date?: string | null
+          exchange_type: string
+          faculty_email?: string | null
+          faculty_name: string
+          host_university_id: string
+          id?: string
+          outcomes?: string | null
+          purpose?: string | null
+          start_date?: string | null
+          status?: string
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          end_date?: string | null
+          exchange_type?: string
+          faculty_email?: string | null
+          faculty_name?: string
+          host_university_id?: string
+          id?: string
+          outcomes?: string | null
+          purpose?: string | null
+          start_date?: string | null
+          status?: string
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_exchanges_host_university_id_fkey"
+            columns: ["host_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_exchanges_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_agreements: {
+        Row: {
+          application_id: string
+          approved_at: string | null
+          approved_by: string | null
+          course_mappings: Json | null
+          created_at: string
+          home_courses: Json | null
+          host_courses: Json | null
+          id: string
+          notes: string | null
+          status: string
+          total_ects: number | null
+          total_home_credits: number | null
+          total_host_credits: number | null
+          transcript_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          approved_at?: string | null
+          approved_by?: string | null
+          course_mappings?: Json | null
+          created_at?: string
+          home_courses?: Json | null
+          host_courses?: Json | null
+          id?: string
+          notes?: string | null
+          status?: string
+          total_ects?: number | null
+          total_home_credits?: number | null
+          total_host_credits?: number | null
+          transcript_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          course_mappings?: Json | null
+          created_at?: string
+          home_courses?: Json | null
+          host_courses?: Json | null
+          id?: string
+          notes?: string | null
+          status?: string
+          total_ects?: number | null
+          total_home_credits?: number | null
+          total_host_credits?: number | null
+          transcript_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_agreements_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "student_applications"
             referencedColumns: ["id"]
           },
         ]
@@ -164,6 +342,53 @@ export type Database = {
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mobility_tasks: {
+        Row: {
+          application_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          phase: string
+          sort_order: number
+          task_name: string
+        }
+        Insert: {
+          application_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          phase: string
+          sort_order?: number
+          task_name: string
+        }
+        Update: {
+          application_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          phase?: string
+          sort_order?: number
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobility_tasks_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "student_applications"
             referencedColumns: ["id"]
           },
         ]
@@ -511,6 +736,150 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_collaborations: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          funding_amount: number | null
+          funding_source: string | null
+          id: string
+          partner_investigator: string | null
+          partner_university_id: string
+          principal_investigator: string | null
+          project_title: string
+          publications_count: number | null
+          research_area: string | null
+          start_date: string | null
+          status: string
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          funding_amount?: number | null
+          funding_source?: string | null
+          id?: string
+          partner_investigator?: string | null
+          partner_university_id: string
+          principal_investigator?: string | null
+          project_title: string
+          publications_count?: number | null
+          research_area?: string | null
+          start_date?: string | null
+          status?: string
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          funding_amount?: number | null
+          funding_source?: string | null
+          id?: string
+          partner_investigator?: string | null
+          partner_university_id?: string
+          principal_investigator?: string | null
+          project_title?: string
+          publications_count?: number | null
+          research_area?: string | null
+          start_date?: string | null
+          status?: string
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_collaborations_partner_university_id_fkey"
+            columns: ["partner_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_collaborations_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_applications: {
+        Row: {
+          academic_year: string
+          application_date: string
+          created_at: string
+          end_date: string | null
+          host_university_id: string
+          id: string
+          notes: string | null
+          program_type: string
+          semester: string
+          start_date: string | null
+          status: string
+          student_email: string
+          student_id_number: string | null
+          student_name: string
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year: string
+          application_date?: string
+          created_at?: string
+          end_date?: string | null
+          host_university_id: string
+          id?: string
+          notes?: string | null
+          program_type: string
+          semester: string
+          start_date?: string | null
+          status?: string
+          student_email: string
+          student_id_number?: string | null
+          student_name: string
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          application_date?: string
+          created_at?: string
+          end_date?: string | null
+          host_university_id?: string
+          id?: string
+          notes?: string | null
+          program_type?: string
+          semester?: string
+          start_date?: string | null
+          status?: string
+          student_email?: string
+          student_id_number?: string | null
+          student_name?: string
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_applications_host_university_id_fkey"
+            columns: ["host_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_applications_university_id_fkey"
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
