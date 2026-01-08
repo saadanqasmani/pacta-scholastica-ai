@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,151 +32,169 @@ import {
   ArrowRightLeft,
   Save,
   Edit2,
+  Calendar,
 } from 'lucide-react';
 
-// Dummy data for 96 countries with ~5000 students total
-const generateCountryData = () => {
-  const countries = [
-    { name: 'Syria', students: 412 },
-    { name: 'Iran', students: 387 },
-    { name: 'Azerbaijan', students: 356 },
-    { name: 'Turkmenistan', students: 289 },
-    { name: 'Kazakhstan', students: 276 },
-    { name: 'Afghanistan', students: 234 },
-    { name: 'Iraq', students: 223 },
-    { name: 'Pakistan', students: 198 },
-    { name: 'Egypt', students: 187 },
-    { name: 'Jordan', students: 156 },
-    { name: 'Palestine', students: 145 },
-    { name: 'Libya', students: 134 },
-    { name: 'Yemen', students: 123 },
-    { name: 'Somalia', students: 112 },
-    { name: 'Sudan', students: 98 },
-    { name: 'Morocco', students: 87 },
-    { name: 'Tunisia', students: 76 },
-    { name: 'Algeria', students: 72 },
-    { name: 'Nigeria', students: 68 },
-    { name: 'Kenya', students: 64 },
-    { name: 'Ethiopia', students: 58 },
-    { name: 'Tanzania', students: 52 },
-    { name: 'Uganda', students: 48 },
-    { name: 'Ghana', students: 45 },
-    { name: 'Cameroon', students: 42 },
-    { name: 'Senegal', students: 38 },
-    { name: 'Côte d\'Ivoire', students: 35 },
-    { name: 'Mali', students: 32 },
-    { name: 'Burkina Faso', students: 28 },
-    { name: 'Niger', students: 25 },
-    { name: 'Chad', students: 22 },
-    { name: 'Mauritania', students: 18 },
-    { name: 'Djibouti', students: 15 },
-    { name: 'Comoros', students: 12 },
-    { name: 'Indonesia', students: 89 },
-    { name: 'Malaysia', students: 76 },
-    { name: 'Bangladesh', students: 65 },
-    { name: 'India', students: 58 },
-    { name: 'Philippines', students: 45 },
-    { name: 'Vietnam', students: 42 },
-    { name: 'Thailand', students: 38 },
-    { name: 'Nepal', students: 34 },
-    { name: 'Sri Lanka', students: 28 },
-    { name: 'Myanmar', students: 24 },
-    { name: 'Cambodia', students: 18 },
-    { name: 'Laos', students: 14 },
-    { name: 'Mongolia', students: 32 },
-    { name: 'Uzbekistan', students: 78 },
-    { name: 'Kyrgyzstan', students: 65 },
-    { name: 'Tajikistan', students: 54 },
-    { name: 'Georgia', students: 48 },
-    { name: 'Armenia', students: 42 },
-    { name: 'Russia', students: 56 },
-    { name: 'Ukraine', students: 45 },
-    { name: 'Belarus', students: 32 },
-    { name: 'Moldova', students: 24 },
-    { name: 'Kosovo', students: 28 },
-    { name: 'Albania', students: 35 },
-    { name: 'North Macedonia', students: 22 },
-    { name: 'Bosnia', students: 18 },
-    { name: 'Serbia', students: 15 },
-    { name: 'Montenegro', students: 12 },
-    { name: 'Bulgaria', students: 25 },
-    { name: 'Romania', students: 28 },
-    { name: 'Greece', students: 22 },
-    { name: 'Cyprus', students: 18 },
-    { name: 'Germany', students: 45 },
-    { name: 'France', students: 38 },
-    { name: 'UK', students: 32 },
-    { name: 'Netherlands', students: 28 },
-    { name: 'Belgium', students: 22 },
-    { name: 'Austria', students: 18 },
-    { name: 'Switzerland', students: 15 },
-    { name: 'Italy', students: 25 },
-    { name: 'Spain', students: 22 },
-    { name: 'Portugal', students: 15 },
-    { name: 'Poland', students: 28 },
-    { name: 'Czech Republic', students: 22 },
-    { name: 'Hungary', students: 18 },
-    { name: 'Slovakia', students: 12 },
-    { name: 'Slovenia', students: 10 },
-    { name: 'Croatia', students: 14 },
-    { name: 'Sweden', students: 18 },
-    { name: 'Norway', students: 14 },
-    { name: 'Denmark', students: 12 },
-    { name: 'Finland', students: 10 },
-    { name: 'USA', students: 42 },
-    { name: 'Canada', students: 28 },
-    { name: 'Mexico', students: 18 },
-    { name: 'Brazil', students: 22 },
-    { name: 'Argentina', students: 15 },
-    { name: 'Colombia', students: 12 },
-    { name: 'Chile', students: 10 },
-    { name: 'Peru', students: 8 },
-    { name: 'Australia', students: 18 },
-    { name: 'New Zealand', students: 10 },
+// Years available
+const years = ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021'];
+
+// Generate country data with year-specific variations
+const generateCountryDataForYear = (year: string) => {
+  const baseCountries = [
+    { name: 'Syria', base: 412 },
+    { name: 'Iran', base: 387 },
+    { name: 'Azerbaijan', base: 356 },
+    { name: 'Turkmenistan', base: 289 },
+    { name: 'Kazakhstan', base: 276 },
+    { name: 'Afghanistan', base: 234 },
+    { name: 'Iraq', base: 223 },
+    { name: 'Pakistan', base: 198 },
+    { name: 'Egypt', base: 187 },
+    { name: 'Jordan', base: 156 },
+    { name: 'Palestine', base: 145 },
+    { name: 'Libya', base: 134 },
+    { name: 'Yemen', base: 123 },
+    { name: 'Somalia', base: 112 },
+    { name: 'Sudan', base: 98 },
+    { name: 'Morocco', base: 87 },
+    { name: 'Tunisia', base: 76 },
+    { name: 'Algeria', base: 72 },
+    { name: 'Nigeria', base: 68 },
+    { name: 'Kenya', base: 64 },
+    { name: 'Ethiopia', base: 58 },
+    { name: 'Tanzania', base: 52 },
+    { name: 'Uganda', base: 48 },
+    { name: 'Ghana', base: 45 },
+    { name: 'Cameroon', base: 42 },
+    { name: 'Senegal', base: 38 },
+    { name: 'Côte d\'Ivoire', base: 35 },
+    { name: 'Mali', base: 32 },
+    { name: 'Burkina Faso', base: 28 },
+    { name: 'Niger', base: 25 },
+    { name: 'Chad', base: 22 },
+    { name: 'Mauritania', base: 18 },
+    { name: 'Djibouti', base: 15 },
+    { name: 'Comoros', base: 12 },
+    { name: 'Indonesia', base: 89 },
+    { name: 'Malaysia', base: 76 },
+    { name: 'Bangladesh', base: 65 },
+    { name: 'India', base: 58 },
+    { name: 'Philippines', base: 45 },
+    { name: 'Vietnam', base: 42 },
+    { name: 'Thailand', base: 38 },
+    { name: 'Nepal', base: 34 },
+    { name: 'Sri Lanka', base: 28 },
+    { name: 'Myanmar', base: 24 },
+    { name: 'Cambodia', base: 18 },
+    { name: 'Laos', base: 14 },
+    { name: 'Mongolia', base: 32 },
+    { name: 'Uzbekistan', base: 78 },
+    { name: 'Kyrgyzstan', base: 65 },
+    { name: 'Tajikistan', base: 54 },
+    { name: 'Georgia', base: 48 },
+    { name: 'Armenia', base: 42 },
+    { name: 'Russia', base: 56 },
+    { name: 'Ukraine', base: 45 },
+    { name: 'Belarus', base: 32 },
+    { name: 'Moldova', base: 24 },
+    { name: 'Kosovo', base: 28 },
+    { name: 'Albania', base: 35 },
+    { name: 'North Macedonia', base: 22 },
+    { name: 'Bosnia', base: 18 },
+    { name: 'Serbia', base: 15 },
+    { name: 'Montenegro', base: 12 },
+    { name: 'Bulgaria', base: 25 },
+    { name: 'Romania', base: 28 },
+    { name: 'Greece', base: 22 },
+    { name: 'Cyprus', base: 18 },
+    { name: 'Germany', base: 45 },
+    { name: 'France', base: 38 },
+    { name: 'UK', base: 32 },
+    { name: 'Netherlands', base: 28 },
+    { name: 'Belgium', base: 22 },
+    { name: 'Austria', base: 18 },
+    { name: 'Switzerland', base: 15 },
+    { name: 'Italy', base: 25 },
+    { name: 'Spain', base: 22 },
+    { name: 'Portugal', base: 15 },
+    { name: 'Poland', base: 28 },
+    { name: 'Czech Republic', base: 22 },
+    { name: 'Hungary', base: 18 },
+    { name: 'Slovakia', base: 12 },
+    { name: 'Slovenia', base: 10 },
+    { name: 'Croatia', base: 14 },
+    { name: 'Sweden', base: 18 },
+    { name: 'Norway', base: 14 },
+    { name: 'Denmark', base: 12 },
+    { name: 'Finland', base: 10 },
+    { name: 'USA', base: 42 },
+    { name: 'Canada', base: 28 },
+    { name: 'Mexico', base: 18 },
+    { name: 'Brazil', base: 22 },
+    { name: 'Argentina', base: 15 },
+    { name: 'Colombia', base: 12 },
+    { name: 'Chile', base: 10 },
+    { name: 'Peru', base: 8 },
+    { name: 'Australia', base: 18 },
+    { name: 'New Zealand', base: 10 },
   ];
 
-  return countries.map(c => ({
-    ...c,
-    acceptanceLetters: Math.floor(c.students * (1.2 + Math.random() * 0.3)),
-    applied: Math.floor(c.students * (0.85 + Math.random() * 0.15)),
-    paid: c.students,
-    frozen: Math.floor(c.students * (0.02 + Math.random() * 0.05)),
-    transfer: Math.floor(c.students * (0.05 + Math.random() * 0.08)),
-    deleted: Math.floor(c.students * (0.03 + Math.random() * 0.04)),
-    graduated: Math.floor(c.students * (0.15 + Math.random() * 0.2)),
+  // Year multiplier for variation
+  const yearIndex = years.indexOf(year);
+  const multiplier = 1 - (yearIndex * 0.08); // Older years have fewer students
+
+  return baseCountries.map(c => {
+    const registered = Math.floor(c.base * multiplier);
+    return {
+      name: c.name,
+      acceptanceLetters: Math.floor(registered * 1.35),
+      registered,
+      frozen: Math.floor(registered * 0.04),
+      transfer: Math.floor(registered * 0.07),
+      deleted: Math.floor(registered * 0.035),
+      graduated: Math.floor(registered * 0.18),
+    };
+  });
+};
+
+// 20 recruitment agencies with year variations
+const generateAgencyDataForYear = (year: string) => {
+  const baseAgencies = [
+    { name: 'United Education', base: 423, countries: ['Syria', 'Iraq', 'Jordan'], commission: 15 },
+    { name: 'Global Study Partners', base: 387, countries: ['Iran', 'Azerbaijan', 'Turkmenistan'], commission: 12 },
+    { name: 'EduWorld International', base: 356, countries: ['Pakistan', 'Afghanistan', 'Bangladesh'], commission: 14 },
+    { name: 'Academic Bridge', base: 312, countries: ['Egypt', 'Libya', 'Tunisia'], commission: 13 },
+    { name: 'Horizon Education', base: 289, countries: ['Kazakhstan', 'Uzbekistan', 'Kyrgyzstan'], commission: 11 },
+    { name: 'StudyAbroad Pro', base: 267, countries: ['Nigeria', 'Ghana', 'Kenya'], commission: 16 },
+    { name: 'Eastern Gateway', base: 245, countries: ['Indonesia', 'Malaysia', 'Philippines'], commission: 12 },
+    { name: 'Eurasia Connect', base: 223, countries: ['Russia', 'Ukraine', 'Belarus'], commission: 10 },
+    { name: 'Middle East Education', base: 198, countries: ['Palestine', 'Yemen', 'Somalia'], commission: 14 },
+    { name: 'African Scholars', base: 187, countries: ['Ethiopia', 'Tanzania', 'Uganda'], commission: 15 },
+    { name: 'Central Asia Link', base: 165, countries: ['Tajikistan', 'Mongolia', 'Georgia'], commission: 11 },
+    { name: 'Balkan Education Hub', base: 145, countries: ['Kosovo', 'Albania', 'North Macedonia'], commission: 13 },
+    { name: 'European Studies', base: 134, countries: ['Germany', 'France', 'Netherlands'], commission: 8 },
+    { name: 'South Asia Connect', base: 123, countries: ['India', 'Nepal', 'Sri Lanka'], commission: 14 },
+    { name: 'Americas Education', base: 98, countries: ['USA', 'Canada', 'Brazil'], commission: 9 },
+    { name: 'Pacific Rim Partners', base: 87, countries: ['Australia', 'New Zealand', 'Thailand'], commission: 10 },
+    { name: 'Nordic Bridge', base: 65, countries: ['Sweden', 'Norway', 'Finland'], commission: 7 },
+    { name: 'Mediterranean Gate', base: 54, countries: ['Italy', 'Spain', 'Portugal'], commission: 9 },
+    { name: 'Silk Road Education', base: 45, countries: ['Armenia', 'Moldova', 'Vietnam'], commission: 12 },
+    { name: 'Global Campus', base: 38, countries: ['Mexico', 'Colombia', 'Chile'], commission: 11 },
+  ];
+
+  const yearIndex = years.indexOf(year);
+  const multiplier = 1 - (yearIndex * 0.08);
+
+  return baseAgencies.map(a => ({
+    ...a,
+    students: Math.floor(a.base * multiplier),
   }));
 };
 
-// 20 recruitment agencies
-const generateAgencyData = () => [
-  { name: 'United Education', students: 423, countries: ['Syria', 'Iraq', 'Jordan'], commission: 15 },
-  { name: 'Global Study Partners', students: 387, countries: ['Iran', 'Azerbaijan', 'Turkmenistan'], commission: 12 },
-  { name: 'EduWorld International', students: 356, countries: ['Pakistan', 'Afghanistan', 'Bangladesh'], commission: 14 },
-  { name: 'Academic Bridge', students: 312, countries: ['Egypt', 'Libya', 'Tunisia'], commission: 13 },
-  { name: 'Horizon Education', students: 289, countries: ['Kazakhstan', 'Uzbekistan', 'Kyrgyzstan'], commission: 11 },
-  { name: 'StudyAbroad Pro', students: 267, countries: ['Nigeria', 'Ghana', 'Kenya'], commission: 16 },
-  { name: 'Eastern Gateway', students: 245, countries: ['Indonesia', 'Malaysia', 'Philippines'], commission: 12 },
-  { name: 'Eurasia Connect', students: 223, countries: ['Russia', 'Ukraine', 'Belarus'], commission: 10 },
-  { name: 'Middle East Education', students: 198, countries: ['Palestine', 'Yemen', 'Somalia'], commission: 14 },
-  { name: 'African Scholars', students: 187, countries: ['Ethiopia', 'Tanzania', 'Uganda'], commission: 15 },
-  { name: 'Central Asia Link', students: 165, countries: ['Tajikistan', 'Mongolia', 'Georgia'], commission: 11 },
-  { name: 'Balkan Education Hub', students: 145, countries: ['Kosovo', 'Albania', 'North Macedonia'], commission: 13 },
-  { name: 'European Studies', students: 134, countries: ['Germany', 'France', 'Netherlands'], commission: 8 },
-  { name: 'South Asia Connect', students: 123, countries: ['India', 'Nepal', 'Sri Lanka'], commission: 14 },
-  { name: 'Americas Education', students: 98, countries: ['USA', 'Canada', 'Brazil'], commission: 9 },
-  { name: 'Pacific Rim Partners', students: 87, countries: ['Australia', 'New Zealand', 'Thailand'], commission: 10 },
-  { name: 'Nordic Bridge', students: 65, countries: ['Sweden', 'Norway', 'Finland'], commission: 7 },
-  { name: 'Mediterranean Gate', students: 54, countries: ['Italy', 'Spain', 'Portugal'], commission: 9 },
-  { name: 'Silk Road Education', students: 45, countries: ['Armenia', 'Moldova', 'Vietnam'], commission: 12 },
-  { name: 'Global Campus', students: 38, countries: ['Mexico', 'Colombia', 'Chile'], commission: 11 },
-];
-
 interface CountryStats {
   name: string;
-  students: number;
   acceptanceLetters: number;
-  applied: number;
-  paid: number;
+  registered: number;
   frozen: number;
   transfer: number;
   deleted: number;
@@ -189,9 +208,10 @@ interface AgencyStats {
   commission: number;
 }
 
-// Market Intelligence Component (existing)
+// Market Intelligence Component
 function MarketIntelligenceTab() {
   const { selectedUniversity } = useUniversity();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -210,13 +230,13 @@ function MarketIntelligenceTab() {
 
       setAnalysis(data.analysis);
       toast({
-        title: 'Analysis Complete',
-        description: 'Market intelligence report generated successfully.',
+        title: t('recruitment.analysisComplete'),
+        description: t('recruitment.analysisCompleteDesc'),
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to generate analysis';
+      const message = err instanceof Error ? err.message : t('recruitment.analysisFailed');
       toast({
-        title: 'Analysis Error',
+        title: t('recruitment.analysisError'),
         description: message,
         variant: 'destructive',
       });
@@ -262,19 +282,19 @@ function MarketIntelligenceTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Market Intelligence</h2>
-          <p className="text-sm text-muted-foreground">AI-powered recruitment market analysis</p>
+          <h2 className="text-xl font-semibold">{t('recruitment.marketIntelligence')}</h2>
+          <p className="text-sm text-muted-foreground">{t('intelligence.subtitle')}</p>
         </div>
         <Button onClick={generateAnalysis} disabled={isLoading}>
           {isLoading ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing...
+              {t('recruitment.analyzing')}
             </>
           ) : (
             <>
               <Sparkles className="mr-2 h-4 w-4" />
-              Refresh Analysis
+              {t('common.refresh')}
             </>
           )}
         </Button>
@@ -285,13 +305,13 @@ function MarketIntelligenceTab() {
           <div className="grid gap-4 md:grid-cols-5">
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Total Applications</CardDescription>
+                <CardDescription>{t('recruitment.totalApplications')}</CardDescription>
                 <CardTitle className="text-2xl">{analysis.summary.totalApplications.toLocaleString()}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Avg. Conversion</CardDescription>
+                <CardDescription>{t('recruitment.avgConversion')}</CardDescription>
                 <CardTitle className="text-2xl">{analysis.summary.averageConversion.toFixed(1)}%</CardTitle>
               </CardHeader>
             </Card>
@@ -299,7 +319,7 @@ function MarketIntelligenceTab() {
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-green-600" />
-                  Markets to Scale
+                  {t('recruitment.marketsToScale')}
                 </CardDescription>
                 <CardTitle className="text-2xl text-green-600">{analysis.summary.marketsToScale}</CardTitle>
               </CardHeader>
@@ -308,7 +328,7 @@ function MarketIntelligenceTab() {
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-1">
                   <PauseCircle className="h-3 w-3 text-yellow-600" />
-                  Markets to Pause
+                  {t('recruitment.marketsToPause')}
                 </CardDescription>
                 <CardTitle className="text-2xl text-yellow-600">{analysis.summary.marketsToPause}</CardTitle>
               </CardHeader>
@@ -317,7 +337,7 @@ function MarketIntelligenceTab() {
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-1">
                   <XCircle className="h-3 w-3 text-red-600" />
-                  Markets to Exit
+                  {t('recruitment.marketsToExit')}
                 </CardDescription>
                 <CardTitle className="text-2xl text-red-600">{analysis.summary.marketsToExit}</CardTitle>
               </CardHeader>
@@ -347,7 +367,7 @@ function MarketIntelligenceTab() {
                   <p className="text-sm text-muted-foreground">{rec.reasoning}</p>
                   
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Confidence</span>
+                    <span className="text-muted-foreground">{t('intelligence.confidence')}</span>
                     <div className="flex items-center gap-2">
                       <Progress value={rec.confidence} className="w-20 h-2" />
                       <span className="font-medium">{rec.confidence}%</span>
@@ -355,7 +375,7 @@ function MarketIntelligenceTab() {
                   </div>
 
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Risk Level</span>
+                    <span className="text-muted-foreground">{t('intelligence.risk')}</span>
                     <Badge variant="outline" className={getRiskColor(rec.riskLevel)}>
                       {rec.riskLevel === 'high' && <AlertTriangle className="h-3 w-3 mr-1" />}
                       {rec.riskLevel === 'low' && <CheckCircle className="h-3 w-3 mr-1" />}
@@ -372,7 +392,7 @@ function MarketIntelligenceTab() {
       {isLoading && !analysis && (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Generating market intelligence...</p>
+          <p className="text-muted-foreground">{t('recruitment.generatingIntelligence')}</p>
         </div>
       )}
     </div>
@@ -383,35 +403,42 @@ export default function Recruitment() {
   const { selectedUniversity } = useUniversity();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [countryStats, setCountryStats] = useState<CountryStats[]>(generateCountryData());
-  const [agencyStats, setAgencyStats] = useState<AgencyStats[]>(generateAgencyData());
+  const [selectedYear, setSelectedYear] = useState(years[0]);
+  const [countryStats, setCountryStats] = useState<CountryStats[]>([]);
+  const [agencyStats, setAgencyStats] = useState<AgencyStats[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Load data when year changes
+  useEffect(() => {
+    setCountryStats(generateCountryDataForYear(selectedYear));
+    setAgencyStats(generateAgencyDataForYear(selectedYear));
+  }, [selectedYear]);
+
   // Calculate totals
   const totals = countryStats.reduce((acc, c) => ({
-    students: acc.students + c.students,
     acceptanceLetters: acc.acceptanceLetters + c.acceptanceLetters,
-    applied: acc.applied + c.applied,
-    paid: acc.paid + c.paid,
+    registered: acc.registered + c.registered,
     frozen: acc.frozen + c.frozen,
     transfer: acc.transfer + c.transfer,
     deleted: acc.deleted + c.deleted,
     graduated: acc.graduated + c.graduated,
-  }), { students: 0, acceptanceLetters: 0, applied: 0, paid: 0, frozen: 0, transfer: 0, deleted: 0, graduated: 0 });
+  }), { acceptanceLetters: 0, registered: 0, frozen: 0, transfer: 0, deleted: 0, graduated: 0 });
 
   const agencyTotals = agencyStats.reduce((acc, a) => acc + a.students, 0);
 
-  const updateCountryStat = (index: number, field: keyof CountryStats, value: number) => {
-    const updated = [...countryStats];
-    (updated[index] as any)[field] = value;
-    setCountryStats(updated);
+  const handleCountryChange = (countryName: string, field: keyof CountryStats, value: string) => {
+    const numValue = parseInt(value) || 0;
+    setCountryStats(prev => prev.map(c => 
+      c.name === countryName ? { ...c, [field]: numValue } : c
+    ));
   };
 
-  const updateAgencyStat = (index: number, value: number) => {
-    const updated = [...agencyStats];
-    updated[index].students = value;
-    setAgencyStats(updated);
+  const handleAgencyChange = (agencyName: string, value: string) => {
+    const numValue = parseInt(value) || 0;
+    setAgencyStats(prev => prev.map(a => 
+      a.name === agencyName ? { ...a, students: numValue } : a
+    ));
   };
 
   const saveChanges = () => {
@@ -440,14 +467,27 @@ export default function Recruitment() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('recruitment.title')}</h1>
           <p className="text-muted-foreground">
             {t('recruitment.subtitle')} - {selectedUniversity.name}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {editMode ? (
             <Button onClick={saveChanges}>
               <Save className="mr-2 h-4 w-4" />
@@ -463,14 +503,14 @@ export default function Recruitment() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <Users className="h-3 w-3" />
-              {t('recruitment.totalStudents')}
+              {t('recruitment.registered')}
             </CardDescription>
-            <CardTitle className="text-2xl">{totals.students.toLocaleString()}</CardTitle>
+            <CardTitle className="text-2xl">{totals.registered.toLocaleString()}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -489,15 +529,6 @@ export default function Recruitment() {
               {t('recruitment.acceptanceLetters')}
             </CardDescription>
             <CardTitle className="text-2xl text-blue-600">{totals.acceptanceLetters.toLocaleString()}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-green-500/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <CreditCard className="h-3 w-3 text-green-600" />
-              {t('recruitment.paid')}
-            </CardDescription>
-            <CardTitle className="text-2xl text-green-600">{totals.paid.toLocaleString()}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-yellow-500/20">
@@ -559,7 +590,7 @@ export default function Recruitment() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                {t('recruitment.studentsByCountry')}
+                {t('recruitment.studentsByCountry')} - {selectedYear}
               </CardTitle>
               <CardDescription>
                 {t('recruitment.studentsByCountryDesc')}
@@ -568,12 +599,11 @@ export default function Recruitment() {
             <CardContent>
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-background">
+                  <thead className="sticky top-0 bg-background z-10">
                     <tr className="border-b">
                       <th className="text-left py-3 px-2 font-medium">{t('recruitment.country')}</th>
                       <th className="text-right py-3 px-2 font-medium">{t('recruitment.acceptanceLetters')}</th>
-                      <th className="text-right py-3 px-2 font-medium">{t('recruitment.applied')}</th>
-                      <th className="text-right py-3 px-2 font-medium">{t('recruitment.paid')}</th>
+                      <th className="text-right py-3 px-2 font-medium">{t('recruitment.registered')}</th>
                       <th className="text-right py-3 px-2 font-medium">{t('recruitment.frozen')}</th>
                       <th className="text-right py-3 px-2 font-medium">{t('recruitment.transfer')}</th>
                       <th className="text-right py-3 px-2 font-medium">{t('recruitment.deleted')}</th>
@@ -581,7 +611,7 @@ export default function Recruitment() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCountries.map((country, index) => (
+                    {filteredCountries.map((country) => (
                       <tr key={country.name} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-2 font-medium">{country.name}</td>
                         <td className="text-right py-3 px-2">
@@ -589,35 +619,23 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={country.acceptanceLetters}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'acceptanceLetters', parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleCountryChange(country.name, 'acceptanceLetters', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
                             country.acceptanceLetters.toLocaleString()
                           )}
                         </td>
-                        <td className="text-right py-3 px-2">
-                          {editMode ? (
-                            <Input
-                              type="number"
-                              value={country.applied}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'applied', parseInt(e.target.value) || 0)}
-                              className="w-20 h-8 text-right"
-                            />
-                          ) : (
-                            country.applied.toLocaleString()
-                          )}
-                        </td>
                         <td className="text-right py-3 px-2 text-green-600">
                           {editMode ? (
                             <Input
                               type="number"
-                              value={country.paid}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'paid', parseInt(e.target.value) || 0)}
+                              value={country.registered}
+                              onChange={(e) => handleCountryChange(country.name, 'registered', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
-                            country.paid.toLocaleString()
+                            country.registered.toLocaleString()
                           )}
                         </td>
                         <td className="text-right py-3 px-2 text-yellow-600">
@@ -625,7 +643,7 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={country.frozen}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'frozen', parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleCountryChange(country.name, 'frozen', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
@@ -637,7 +655,7 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={country.transfer}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'transfer', parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleCountryChange(country.name, 'transfer', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
@@ -649,7 +667,7 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={country.deleted}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'deleted', parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleCountryChange(country.name, 'deleted', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
@@ -661,7 +679,7 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={country.graduated}
-                              onChange={(e) => updateCountryStat(countryStats.indexOf(country), 'graduated', parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleCountryChange(country.name, 'graduated', e.target.value)}
                               className="w-20 h-8 text-right"
                             />
                           ) : (
@@ -675,8 +693,7 @@ export default function Recruitment() {
                     <tr>
                       <td className="py-3 px-2">{t('recruitment.total')}</td>
                       <td className="text-right py-3 px-2">{totals.acceptanceLetters.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">{totals.applied.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2 text-green-600">{totals.paid.toLocaleString()}</td>
+                      <td className="text-right py-3 px-2 text-green-600">{totals.registered.toLocaleString()}</td>
                       <td className="text-right py-3 px-2 text-yellow-600">{totals.frozen.toLocaleString()}</td>
                       <td className="text-right py-3 px-2 text-purple-600">{totals.transfer.toLocaleString()}</td>
                       <td className="text-right py-3 px-2 text-red-600">{totals.deleted.toLocaleString()}</td>
@@ -694,7 +711,7 @@ export default function Recruitment() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                {t('recruitment.studentsByAgency')}
+                {t('recruitment.studentsByAgency')} - {selectedYear}
               </CardTitle>
               <CardDescription>
                 {t('recruitment.studentsByAgencyDesc')} ({agencyStats.length} {t('recruitment.agencies')})
@@ -712,7 +729,7 @@ export default function Recruitment() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAgencies.map((agency, index) => (
+                    {filteredAgencies.map((agency) => (
                       <tr key={agency.name} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-2 font-medium">{agency.name}</td>
                         <td className="text-right py-3 px-2">
@@ -720,7 +737,7 @@ export default function Recruitment() {
                             <Input
                               type="number"
                               value={agency.students}
-                              onChange={(e) => updateAgencyStat(agencyStats.indexOf(agency), parseInt(e.target.value) || 0)}
+                              onChange={(e) => handleAgencyChange(agency.name, e.target.value)}
                               className="w-24 h-8 text-right"
                             />
                           ) : (
