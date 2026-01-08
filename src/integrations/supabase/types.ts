@@ -352,10 +352,13 @@ export type Database = {
           completed_at: string | null
           created_at: string
           description: string | null
+          document_name: string | null
+          document_url: string | null
           due_date: string | null
           id: string
           is_completed: boolean
           phase: string
+          requires_document: boolean | null
           sort_order: number
           task_name: string
         }
@@ -364,10 +367,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          document_name?: string | null
+          document_url?: string | null
           due_date?: string | null
           id?: string
           is_completed?: boolean
           phase: string
+          requires_document?: boolean | null
           sort_order?: number
           task_name: string
         }
@@ -376,10 +382,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          document_name?: string | null
+          document_url?: string | null
           due_date?: string | null
           id?: string
           is_completed?: boolean
           phase?: string
+          requires_document?: boolean | null
           sort_order?: number
           task_name?: string
         }
