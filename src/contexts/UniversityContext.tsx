@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { University } from '@/types/database';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UniversityContextType {
   selectedUniversity: University | null;
@@ -12,6 +13,7 @@ interface UniversityContextType {
 const UniversityContext = createContext<UniversityContextType | undefined>(undefined);
 
 export function UniversityProvider({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [universities, setUniversities] = useState<University[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,10 +31,12 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
         const typedData = (data || []) as University[];
         setUniversities(typedData);
         
-        // Set default university (Koç University)
-        const defaultUniversity = typedData.find(u => u.name === 'Koç University');
-        if (defaultUniversity) {
-          setSelectedUniversity(defaultUniversity);
+        // If user has a university, select it; otherwise select first available
+        if (profile?.university_id) {
+          const userUniversity = typedData.find(u => u.id === profile.university_id);
+          if (userUniversity) {
+            setSelectedUniversity(userUniversity);
+          }
         } else if (typedData.length > 0) {
           setSelectedUniversity(typedData[0]);
         }
@@ -44,7 +48,7 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
     }
 
     fetchUniversities();
-  }, []);
+  }, [profile?.university_id]);
 
   return (
     <UniversityContext.Provider value={{ selectedUniversity, setSelectedUniversity, universities, isLoading }}>

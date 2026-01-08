@@ -477,6 +477,47 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: string | null
+          university_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string | null
+          university_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: string | null
+          university_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       universities: {
         Row: {
           accreditations: string[] | null
@@ -533,6 +574,185 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      university_profiles: {
+        Row: {
+          alumni_footprint: string | null
+          collaboration_channels: string[] | null
+          collaboration_interests: string[] | null
+          contact_person_email: string | null
+          contact_person_name: string | null
+          contact_person_phone: string | null
+          created_at: string
+          credit_transfer_system: string | null
+          cultural_diplomacy_focus: string | null
+          data_reporting_standards: string[] | null
+          degree_recognition: string | null
+          digital_management_systems: string[] | null
+          discipline_focus_areas: string[] | null
+          erasmus_eligibility: string[] | null
+          exchange_programs: string[] | null
+          faculty_exchange_policies: string | null
+          global_summit_participation: string[] | null
+          has_dedicated_io: boolean | null
+          has_english_speaking_staff: boolean | null
+          has_grant_management: boolean | null
+          horizon_europe_eligible: boolean | null
+          id: string
+          international_research_projects: string[] | null
+          internship_frameworks: string[] | null
+          io_manager_1_email: string | null
+          io_manager_1_name: string
+          io_manager_1_phone: string | null
+          io_manager_2_email: string | null
+          io_manager_2_name: string | null
+          io_manager_2_phone: string | null
+          io_manager_3_email: string | null
+          io_manager_3_name: string | null
+          io_manager_3_phone: string | null
+          io_manager_4_email: string | null
+          io_manager_4_name: string | null
+          io_manager_4_phone: string | null
+          io_manager_5_email: string | null
+          io_manager_5_name: string | null
+          io_manager_5_phone: string | null
+          joint_degrees: string[] | null
+          languages_of_instruction: string[] | null
+          memberships: string[] | null
+          publication_metrics: string | null
+          regional_development_goals: string | null
+          research_specializations: string[] | null
+          sdg_alignment: string[] | null
+          social_media_presence: string | null
+          soft_power_alignment: string[] | null
+          student_satisfaction_score: number | null
+          target_regions: string[] | null
+          university_id: string
+          university_photos: string[] | null
+          updated_at: string
+          visa_housing_assistance: boolean | null
+        }
+        Insert: {
+          alumni_footprint?: string | null
+          collaboration_channels?: string[] | null
+          collaboration_interests?: string[] | null
+          contact_person_email?: string | null
+          contact_person_name?: string | null
+          contact_person_phone?: string | null
+          created_at?: string
+          credit_transfer_system?: string | null
+          cultural_diplomacy_focus?: string | null
+          data_reporting_standards?: string[] | null
+          degree_recognition?: string | null
+          digital_management_systems?: string[] | null
+          discipline_focus_areas?: string[] | null
+          erasmus_eligibility?: string[] | null
+          exchange_programs?: string[] | null
+          faculty_exchange_policies?: string | null
+          global_summit_participation?: string[] | null
+          has_dedicated_io?: boolean | null
+          has_english_speaking_staff?: boolean | null
+          has_grant_management?: boolean | null
+          horizon_europe_eligible?: boolean | null
+          id?: string
+          international_research_projects?: string[] | null
+          internship_frameworks?: string[] | null
+          io_manager_1_email?: string | null
+          io_manager_1_name: string
+          io_manager_1_phone?: string | null
+          io_manager_2_email?: string | null
+          io_manager_2_name?: string | null
+          io_manager_2_phone?: string | null
+          io_manager_3_email?: string | null
+          io_manager_3_name?: string | null
+          io_manager_3_phone?: string | null
+          io_manager_4_email?: string | null
+          io_manager_4_name?: string | null
+          io_manager_4_phone?: string | null
+          io_manager_5_email?: string | null
+          io_manager_5_name?: string | null
+          io_manager_5_phone?: string | null
+          joint_degrees?: string[] | null
+          languages_of_instruction?: string[] | null
+          memberships?: string[] | null
+          publication_metrics?: string | null
+          regional_development_goals?: string | null
+          research_specializations?: string[] | null
+          sdg_alignment?: string[] | null
+          social_media_presence?: string | null
+          soft_power_alignment?: string[] | null
+          student_satisfaction_score?: number | null
+          target_regions?: string[] | null
+          university_id: string
+          university_photos?: string[] | null
+          updated_at?: string
+          visa_housing_assistance?: boolean | null
+        }
+        Update: {
+          alumni_footprint?: string | null
+          collaboration_channels?: string[] | null
+          collaboration_interests?: string[] | null
+          contact_person_email?: string | null
+          contact_person_name?: string | null
+          contact_person_phone?: string | null
+          created_at?: string
+          credit_transfer_system?: string | null
+          cultural_diplomacy_focus?: string | null
+          data_reporting_standards?: string[] | null
+          degree_recognition?: string | null
+          digital_management_systems?: string[] | null
+          discipline_focus_areas?: string[] | null
+          erasmus_eligibility?: string[] | null
+          exchange_programs?: string[] | null
+          faculty_exchange_policies?: string | null
+          global_summit_participation?: string[] | null
+          has_dedicated_io?: boolean | null
+          has_english_speaking_staff?: boolean | null
+          has_grant_management?: boolean | null
+          horizon_europe_eligible?: boolean | null
+          id?: string
+          international_research_projects?: string[] | null
+          internship_frameworks?: string[] | null
+          io_manager_1_email?: string | null
+          io_manager_1_name?: string
+          io_manager_1_phone?: string | null
+          io_manager_2_email?: string | null
+          io_manager_2_name?: string | null
+          io_manager_2_phone?: string | null
+          io_manager_3_email?: string | null
+          io_manager_3_name?: string | null
+          io_manager_3_phone?: string | null
+          io_manager_4_email?: string | null
+          io_manager_4_name?: string | null
+          io_manager_4_phone?: string | null
+          io_manager_5_email?: string | null
+          io_manager_5_name?: string | null
+          io_manager_5_phone?: string | null
+          joint_degrees?: string[] | null
+          languages_of_instruction?: string[] | null
+          memberships?: string[] | null
+          publication_metrics?: string | null
+          regional_development_goals?: string | null
+          research_specializations?: string[] | null
+          sdg_alignment?: string[] | null
+          social_media_presence?: string | null
+          soft_power_alignment?: string[] | null
+          student_satisfaction_score?: number | null
+          target_regions?: string[] | null
+          university_id?: string
+          university_photos?: string[] | null
+          updated_at?: string
+          visa_housing_assistance?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "university_profiles_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: true
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
