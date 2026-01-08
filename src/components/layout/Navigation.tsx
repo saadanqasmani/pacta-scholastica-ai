@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { to: '/partnerships', labelKey: 'nav.partnerships', icon: Handshake },
   { to: '/mobility', labelKey: 'mobility.title', icon: Plane },
   { to: '/mou', labelKey: 'mou.title', icon: FileText },
-  { to: '/intelligence', labelKey: 'intelligence.title', icon: TrendingUp },
+  { to: '/recruitment', labelKey: 'recruitment.title', icon: TrendingUp },
 ];
 
 export function Navigation() {

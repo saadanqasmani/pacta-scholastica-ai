@@ -14,7 +14,7 @@ import Partners from "./pages/Partners";
 import Mobility from "./pages/Mobility";
 import MOUManagement from "./pages/MOUManagement";
 import PartnershipManagement from "./pages/PartnershipManagement";
-import MarketIntelligence from "./pages/MarketIntelligence";
+import Recruitment from "./pages/Recruitment";
 import Auth from "./pages/Auth";
 import RegisterUniversity from "./pages/RegisterUniversity";
 import NotFound from "./pages/NotFound";
@@ -39,7 +39,7 @@ const App = () => (
                 <Route path="/mobility" element={<ProtectedRoute><MainLayout><Mobility /></MainLayout></ProtectedRoute>} />
                 <Route path="/mou" element={<ProtectedRoute><MainLayout><MOUManagement /></MainLayout></ProtectedRoute>} />
                 <Route path="/partnerships" element={<ProtectedRoute><MainLayout><PartnershipManagement /></MainLayout></ProtectedRoute>} />
-                <Route path="/intelligence" element={<ProtectedRoute><MainLayout><MarketIntelligence /></MainLayout></ProtectedRoute>} />
+                <Route path="/recruitment" element={<ProtectedRoute><MainLayout><Recruitment /></MainLayout></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </UniversityProvider>
