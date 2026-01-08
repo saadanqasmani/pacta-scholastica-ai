@@ -12,11 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { selectedUniversity, setSelectedUniversity, universities, isLoading } = useUniversity();
+  const { t } = useLanguage();
 
   const turkishUniversities = universities.filter(u => u.country === 'Türkiye');
   const internationalUniversities = universities.filter(u => u.country !== 'Türkiye');
@@ -46,9 +49,9 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="min-w-[280px] justify-between" disabled={isLoading}>
                 <span className="flex items-center gap-2 truncate">
-                  <span className="text-xs text-muted-foreground">Viewing as:</span>
+                  <span className="text-xs text-muted-foreground">{t('header.viewingAs')}</span>
                   <span className="font-medium">
-                    {isLoading ? 'Loading...' : selectedUniversity?.name || 'Select University'}
+                    {isLoading ? t('header.loading') : selectedUniversity?.name || t('header.selectUniversity')}
                   </span>
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
@@ -57,7 +60,7 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-[320px]">
               <ScrollArea className="h-[400px]">
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Turkish Universities
+                  {t('header.turkishUniversities')}
                 </DropdownMenuLabel>
                 {turkishUniversities.map((university) => (
                   <DropdownMenuItem
@@ -77,7 +80,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  International Universities
+                  {t('header.internationalUniversities')}
                 </DropdownMenuLabel>
                 {internationalUniversities.map((university) => (
                   <DropdownMenuItem
@@ -97,6 +100,9 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Language Switcher */}
+          <LanguageSwitcher />
+
           {/* User Menu */}
           {user && (
             <DropdownMenu>
@@ -111,7 +117,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
+                  {t('header.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

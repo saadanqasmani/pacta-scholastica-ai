@@ -8,19 +8,27 @@ import {
   Plane,
   TrendingUp,
 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/profile', label: 'University Profile', icon: Building2 },
-  { to: '/partners', label: 'Partner Discovery', icon: Handshake },
-  { to: '/partnerships', label: 'Partnership Management', icon: Handshake },
-  { to: '/mobility', label: 'Mobility Tracking', icon: Plane },
-  { to: '/mou', label: 'MOU Management', icon: FileText },
-  { to: '/intelligence', label: 'Market Intelligence', icon: TrendingUp },
+interface NavItem {
+  to: string;
+  labelKey: string;
+  icon: typeof LayoutDashboard;
+}
+
+const navItems: NavItem[] = [
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/profile', labelKey: 'profile.title', icon: Building2 },
+  { to: '/partners', labelKey: 'partners.title', icon: Handshake },
+  { to: '/partnerships', labelKey: 'nav.partnerships', icon: Handshake },
+  { to: '/mobility', labelKey: 'mobility.title', icon: Plane },
+  { to: '/mou', labelKey: 'mou.title', icon: FileText },
+  { to: '/intelligence', labelKey: 'intelligence.title', icon: TrendingUp },
 ];
 
 export function Navigation() {
   const location = useLocation();
+  const { t } = useLanguage();
 
   return (
     <nav className="border-b border-border bg-background">
@@ -43,7 +51,7 @@ export function Navigation() {
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </NavLink>
             );
           })}
