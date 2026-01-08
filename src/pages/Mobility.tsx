@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -26,11 +27,15 @@ import {
   GraduationCap,
   RefreshCw,
   Loader2,
-  Filter
+  Filter,
+  ClipboardList,
+  FileText
 } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MobilityRecord, University, Department } from '@/types/database';
+import { StudentMobilityTracking } from '@/components/mobility/StudentMobilityTracking';
+import { LearningAgreementGenerator } from '@/components/mobility/LearningAgreementGenerator';
 
 interface MobilityRecordWithDetails extends MobilityRecord {
   partner_name?: string;
@@ -161,249 +166,280 @@ export default function Mobility() {
     <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Mobility Tracking</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Mobility Management</h1>
         <p className="text-muted-foreground">
-          Track Erasmus and international exchange programs with incoming/outgoing student flows
+          Track student mobility, manage applications, and generate learning agreements
         </p>
       </div>
 
-      {/* Context Card */}
-      <Card className="border-l-4 border-l-primary">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Plane className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Mobility data for</p>
-                <p className="font-semibold">{selectedUniversity.name}</p>
+      {/* Tabs Navigation */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="overview" className="gap-2">
+            <Plane className="h-4 w-4" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="applications" className="gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Student Applications</span>
+          </TabsTrigger>
+          <TabsTrigger value="learning-agreements" className="gap-2">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Learning Agreements</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Context Card */}
+          <Card className="border-l-4 border-l-primary">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Plane className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Mobility data for</p>
+                    <p className="font-semibold">{selectedUniversity.name}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchMobilityData}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Refresh
+                </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Statistics Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
+                    <ArrowDownLeft className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Incoming Students</p>
+                    <p className="text-2xl font-bold">{stats.totalIncoming}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                    <ArrowUpRight className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Outgoing Students</p>
+                    <p className="text-2xl font-bold">{stats.totalOutgoing}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Partner Universities</p>
+                    <p className="text-2xl font-bold">{stats.uniquePartners}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+                    <GraduationCap className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Programs</p>
+                    <p className="text-2xl font-bold">{stats.activePrograms}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Program Type Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Program Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div className="rounded-lg border p-4 text-center">
+                  <Badge variant="default" className="mb-2">Erasmus+</Badge>
+                  <p className="text-2xl font-bold">{stats.erasmusCount}</p>
+                  <p className="text-xs text-muted-foreground">students</p>
+                </div>
+                <div className="rounded-lg border p-4 text-center">
+                  <Badge variant="secondary" className="mb-2">Bilateral</Badge>
+                  <p className="text-2xl font-bold">{stats.bilateralCount}</p>
+                  <p className="text-xs text-muted-foreground">students</p>
+                </div>
+                <div className="rounded-lg border p-4 text-center">
+                  <Badge variant="outline" className="mb-2">Exchange</Badge>
+                  <p className="text-2xl font-bold">{stats.exchangeCount}</p>
+                  <p className="text-xs text-muted-foreground">students</p>
+                </div>
+                <div className="rounded-lg border p-4 text-center">
+                  <Badge variant="destructive" className="mb-2">Joint Degree</Badge>
+                  <p className="text-2xl font-bold">{stats.jointDegreeCount}</p>
+                  <p className="text-xs text-muted-foreground">students</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Filters:</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchMobilityData}
-              disabled={isLoading}
-            >
+            <Select value={programFilter} onValueChange={setProgramFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Program" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Programs</SelectItem>
+                <SelectItem value="erasmus">Erasmus+</SelectItem>
+                <SelectItem value="bilateral">Bilateral</SelectItem>
+                <SelectItem value="exchange">Exchange</SelectItem>
+                <SelectItem value="joint_degree">Joint Degree</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={directionFilter} onValueChange={setDirectionFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Direction" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Directions</SelectItem>
+                <SelectItem value="incoming">Incoming</SelectItem>
+                <SelectItem value="outgoing">Outgoing</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {academicYears.map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Records Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Mobility Records</span>
+                <Badge variant="outline">{filteredRecords.length} records</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Refresh
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
-                <ArrowDownLeft className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Incoming Students</p>
-                <p className="text-2xl font-bold">{stats.totalIncoming}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                <ArrowUpRight className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Outgoing Students</p>
-                <p className="text-2xl font-bold">{stats.totalOutgoing}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Partner Universities</p>
-                <p className="text-2xl font-bold">{stats.uniquePartners}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
-                <GraduationCap className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Active Programs</p>
-                <p className="text-2xl font-bold">{stats.activePrograms}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Program Type Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Program Distribution</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-lg border p-4 text-center">
-              <Badge variant="default" className="mb-2">Erasmus+</Badge>
-              <p className="text-2xl font-bold">{stats.erasmusCount}</p>
-              <p className="text-xs text-muted-foreground">students</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <Badge variant="secondary" className="mb-2">Bilateral</Badge>
-              <p className="text-2xl font-bold">{stats.bilateralCount}</p>
-              <p className="text-xs text-muted-foreground">students</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <Badge variant="outline" className="mb-2">Exchange</Badge>
-              <p className="text-2xl font-bold">{stats.exchangeCount}</p>
-              <p className="text-xs text-muted-foreground">students</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <Badge variant="destructive" className="mb-2">Joint Degree</Badge>
-              <p className="text-2xl font-bold">{stats.jointDegreeCount}</p>
-              <p className="text-xs text-muted-foreground">students</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filters:</span>
-        </div>
-        <Select value={programFilter} onValueChange={setProgramFilter}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Program" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Programs</SelectItem>
-            <SelectItem value="erasmus">Erasmus+</SelectItem>
-            <SelectItem value="bilateral">Bilateral</SelectItem>
-            <SelectItem value="exchange">Exchange</SelectItem>
-            <SelectItem value="joint_degree">Joint Degree</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={directionFilter} onValueChange={setDirectionFilter}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Direction" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Directions</SelectItem>
-            <SelectItem value="incoming">Incoming</SelectItem>
-            <SelectItem value="outgoing">Outgoing</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Year" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
-            {academicYears.map(year => (
-              <SelectItem key={year} value={year}>{year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Records Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Mobility Records</span>
-            <Badge variant="outline">{filteredRecords.length} records</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredRecords.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Partner University</TableHead>
-                    <TableHead>Program</TableHead>
-                    <TableHead>Direction</TableHead>
-                    <TableHead className="text-right">Students</TableHead>
-                    <TableHead>Academic Year</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecords.map((record) => {
-                    const partner = universities.find(u => u.id === record.partner_university_id);
-                    return (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{partner?.name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">{partner?.country || ''}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getProgramBadgeVariant(record.program_type)} className="capitalize">
-                            {record.program_type.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {record.direction === 'incoming' ? (
-                              <ArrowDownLeft className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <ArrowUpRight className="h-4 w-4 text-blue-600" />
-                            )}
-                            <span className="capitalize">{record.direction}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {record.student_count}
-                        </TableCell>
-                        <TableCell>{record.academic_year}</TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(record.completion_status)} className="capitalize">
-                            {record.completion_status}
-                          </Badge>
-                        </TableCell>
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredRecords.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Partner University</TableHead>
+                        <TableHead>Program</TableHead>
+                        <TableHead>Direction</TableHead>
+                        <TableHead className="text-right">Students</TableHead>
+                        <TableHead>Academic Year</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
-              <Plane className="h-8 w-8 mb-2 opacity-50" />
-              <p>No mobility records found</p>
-              <p className="text-sm">Mobility data will appear here once programs are active</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRecords.map((record) => {
+                        const partner = universities.find(u => u.id === record.partner_university_id);
+                        return (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{partner?.name || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">{partner?.country || ''}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getProgramBadgeVariant(record.program_type)} className="capitalize">
+                                {record.program_type.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {record.direction === 'incoming' ? (
+                                  <ArrowDownLeft className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <ArrowUpRight className="h-4 w-4 text-blue-600" />
+                                )}
+                                <span className="capitalize">{record.direction}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {record.student_count}
+                            </TableCell>
+                            <TableCell>{record.academic_year}</TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusBadgeVariant(record.completion_status)} className="capitalize">
+                                {record.completion_status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
+                  <Plane className="h-8 w-8 mb-2 opacity-50" />
+                  <p>No mobility records found</p>
+                  <p className="text-sm">Mobility data will appear here once programs are active</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Student Applications Tab */}
+        <TabsContent value="applications">
+          <StudentMobilityTracking />
+        </TabsContent>
+
+        {/* Learning Agreements Tab */}
+        <TabsContent value="learning-agreements">
+          <LearningAgreementGenerator />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
