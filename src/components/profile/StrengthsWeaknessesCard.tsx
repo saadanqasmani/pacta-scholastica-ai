@@ -20,10 +20,12 @@ export function StrengthsWeaknessesCard() {
   const { data, isLoading, evaluate } = useAIEvaluation<StrengthsWeaknesses>('strengths_weaknesses');
 
   useEffect(() => {
-    if (selectedUniversity?.id && !data && !isLoading) {
+    // Re-generate when the selected university changes.
+    if (selectedUniversity?.id) {
       evaluate(selectedUniversity.id);
     }
-  }, [selectedUniversity?.id]);
+  }, [selectedUniversity?.id, evaluate]);
+
 
   const renderDepartment = (dept: DepartmentAnalysis, type: 'strength' | 'weakness') => {
     const action = actionLabels[dept.action_required || 'none'];

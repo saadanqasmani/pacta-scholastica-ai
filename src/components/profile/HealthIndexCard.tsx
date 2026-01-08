@@ -12,10 +12,12 @@ export function HealthIndexCard() {
   const { data, isLoading, evaluate } = useAIEvaluation<InstitutionalHealthIndex>('health_index');
 
   useEffect(() => {
-    if (selectedUniversity?.id && !data && !isLoading) {
+    // Re-generate when the selected university changes.
+    if (selectedUniversity?.id) {
       evaluate(selectedUniversity.id);
     }
-  }, [selectedUniversity?.id]);
+  }, [selectedUniversity?.id, evaluate]);
+
 
   const metrics = data ? [
     { label: 'Recruitment Efficiency', value: data.recruitment_efficiency },

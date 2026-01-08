@@ -31,10 +31,12 @@ export function DepartmentROICard() {
   const { data, isLoading, evaluate } = useAIEvaluation<DepartmentROIResponse>('department_roi');
 
   useEffect(() => {
-    if (selectedUniversity?.id && !data && !isLoading) {
+    // Re-generate when the selected university changes.
+    if (selectedUniversity?.id) {
       evaluate(selectedUniversity.id);
     }
-  }, [selectedUniversity?.id]);
+  }, [selectedUniversity?.id, evaluate]);
+
 
   const getScoreColor = (score: number) => {
     if (score >= 75) return 'text-primary';
