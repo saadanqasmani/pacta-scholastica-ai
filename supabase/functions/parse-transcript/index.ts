@@ -26,6 +26,17 @@ serve(async (req) => {
 2. Match each course with the best equivalent at the host university
 3. Calculate a match score (0-100) based on content similarity
 
+CRITICAL MATCHING RULES:
+- DEPARTMENT MATCHING IS MANDATORY: A Civil Engineering course can ONLY match with Civil Engineering or closely related engineering courses (e.g., Structural Engineering). NEVER match engineering courses with Business, Economics, Psychology, or unrelated departments.
+- Subject area must align: A "Statics and Dynamics" course should match structural/mechanical engineering courses, NOT finance or marketing courses.
+- If no suitable match exists in the same department/field, return a match score of 0-20 and explain why no good match was found.
+- Match scores:
+  - 90-100: Same department, nearly identical course content and credits
+  - 70-89: Same/related department, similar content, minor differences
+  - 50-69: Related field, overlapping content
+  - 30-49: Loosely related, some transferable concepts
+  - 0-29: No suitable match or completely different fields (e.g., Civil Eng matched to Psychology)
+
 Always respond using the provided tool/function.`;
 
     const userPrompt = `Parse this transcript and match courses with the host university:
@@ -36,10 +47,13 @@ ${transcriptText}
 HOST UNIVERSITY COURSES:
 ${JSON.stringify(hostUniversityCourses, null, 2)}
 
-Extract courses from the transcript and find the best matching host courses. For each home course, identify the most similar host course based on:
-- Course content/description similarity
-- Credit equivalence
-- Subject area match`;
+Extract courses from the transcript and find the best matching host courses. For each home course:
+1. FIRST identify the department/subject area of the home course
+2. ONLY consider host courses in the SAME or closely related department
+3. Then evaluate content similarity, credit equivalence, and learning outcomes
+4. If no host course exists in a related department, assign a low score (0-20) and explain the mismatch
+
+IMPORTANT: Never match courses across unrelated disciplines (e.g., Engineering → Business, Science → Arts).`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
