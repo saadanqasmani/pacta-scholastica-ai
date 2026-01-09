@@ -56,6 +56,8 @@ interface SelectedHomeCourse {
   name: string;
   credits: number;
   ects: number | null;
+  department: string | null;
+  description: string | null;
 }
 
 interface CourseMatch {
@@ -202,6 +204,8 @@ export function LearningAgreementGenerator() {
       name: course.course_name,
       credits: course.credits,
       ects: course.ects_credits,
+      department: course.department,
+      description: course.description,
     }]);
   };
 
@@ -220,13 +224,13 @@ export function LearningAgreementGenerator() {
       const response = await supabase.functions.invoke('parse-transcript', {
         body: {
           transcriptText: selectedHomeCourses.map(c => 
-            `${c.code} - ${c.name} (${c.credits} credits)`
-          ).join('\n'),
+            `${c.code} - ${c.name} (${c.credits} credits, Department: ${c.department || 'Unknown'})\nDescription: ${c.description || 'No description available'}`
+          ).join('\n\n'),
           hostUniversityCourses: hostCourses.map(c => ({
             id: c.id,
             code: c.course_code,
             name: c.course_name,
-            description: c.description,
+            description: c.description || 'No description available',
             credits: c.credits,
             ects: c.ects_credits,
             department: c.department,
