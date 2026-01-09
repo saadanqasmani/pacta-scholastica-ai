@@ -25,6 +25,7 @@ import {
   Building2,
   User,
   Calendar,
+  Search,
 } from 'lucide-react';
 
 interface Course {
@@ -92,6 +93,7 @@ export function LearningAgreementGenerator() {
   const [homeCourses, setHomeCourses] = useState<Course[]>([]);
   const [selectedHomeCourses, setSelectedHomeCourses] = useState<SelectedHomeCourse[]>([]);
   const [hostCourses, setHostCourses] = useState<Course[]>([]);
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
   
   // Step 3: AI Matching
   const [courseMatches, setCourseMatches] = useState<CourseMatch[]>([]);
@@ -156,22 +158,28 @@ export function LearningAgreementGenerator() {
   const fetchHomeCourses = async () => {
     if (!selectedUniversity) return;
     
-    let query = supabase
+    // Always fetch all courses for the university - department filter is optional
+    const { data, error } = await supabase
       .from('courses')
       .select('*')
       .eq('university_id', selectedUniversity.id)
-      .order('course_code');
+      .order('department', { ascending: true })
+      .order('course_code', { ascending: true });
     
-    // Filter by department if selected
-    if (selectedDepartmentId) {
-      const dept = departments.find(d => d.id === selectedDepartmentId);
-      if (dept) {
-        query = query.eq('department', dept.name);
+    if (!error && data) {
+      // If department is selected, filter client-side but keep all courses accessible
+      if (selectedDepartmentId) {
+        const dept = departments.find(d => d.id === selectedDepartmentId);
+        if (dept) {
+          const filtered = data.filter(c => c.department === dept.name);
+          setHomeCourses(filtered.length > 0 ? filtered : data);
+        } else {
+          setHomeCourses(data);
+        }
+      } else {
+        setHomeCourses(data);
       }
     }
-    
-    const { data, error } = await query;
-    if (!error && data) setHomeCourses(data);
   };
 
   const fetchHostCourses = async () => {
@@ -733,45 +741,73 @@ export function LearningAgreementGenerator() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                Available Home Courses
+                Available Home Courses ({homeCourses.length})
               </CardTitle>
               <CardDescription>
-                Select courses you need to complete at the host university
+                Select courses you would normally take at {selectedUniversity?.name} but will now take at the host university
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px] pr-4">
+              {/* Search Bar */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search courses by name or code..."
+                  value={courseSearchQuery}
+                  onChange={(e) => setCourseSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              <ScrollArea className="h-[350px] pr-4">
                 <div className="space-y-2">
                   {homeCourses.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      No courses found. Please check if your university has courses registered.
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <BookOpen className="h-10 w-10 mb-3 opacity-40" />
+                      <p className="text-sm font-medium">No courses available</p>
+                      <p className="text-xs text-center mt-1 max-w-[250px]">
+                        Courses haven't been registered for {selectedUniversity?.name} yet. 
+                        Please contact your administrator.
+                      </p>
+                    </div>
                   ) : (
-                    homeCourses.map(course => (
-                      <div
-                        key={course.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{course.course_code}</p>
-                          <p className="text-sm text-muted-foreground truncate">{course.course_name}</p>
-                          <div className="flex gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">{course.credits} cr</Badge>
-                            {course.ects_credits && (
-                              <Badge variant="outline" className="text-xs">{course.ects_credits} ECTS</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => addHomeCourse(course)}
-                          disabled={selectedHomeCourses.some(c => c.id === course.id)}
+                    homeCourses
+                      .filter(c => 
+                        !courseSearchQuery || 
+                        c.course_code.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+                        c.course_name.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+                        (c.department?.toLowerCase() || '').includes(courseSearchQuery.toLowerCase())
+                      )
+                      .map(course => (
+                        <div
+                          key={course.id}
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                         >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm">{course.course_code}</p>
+                              {course.department && (
+                                <Badge variant="secondary" className="text-[10px]">{course.department}</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{course.course_name}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">{course.credits} cr</Badge>
+                              {course.ects_credits && (
+                                <Badge variant="outline" className="text-xs">{course.ects_credits} ECTS</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => addHomeCourse(course)}
+                            disabled={selectedHomeCourses.some(c => c.id === course.id)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
                   )}
                 </div>
               </ScrollArea>
