@@ -225,7 +225,7 @@ export type Database = {
       }
       learning_agreements: {
         Row: {
-          application_id: string
+          application_id: string | null
           approved_at: string | null
           approved_by: string | null
           course_mappings: Json | null
@@ -242,7 +242,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          application_id: string
+          application_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           course_mappings?: Json | null
@@ -259,7 +259,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          application_id?: string
+          application_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           course_mappings?: Json | null

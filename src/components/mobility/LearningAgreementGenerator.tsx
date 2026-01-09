@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   FileText,
@@ -26,6 +27,8 @@ import {
   User,
   Calendar,
   Search,
+  Info,
+  Eye,
 } from 'lucide-react';
 
 interface Course {
@@ -96,6 +99,7 @@ export function LearningAgreementGenerator() {
   const [selectedHomeCourses, setSelectedHomeCourses] = useState<SelectedHomeCourse[]>([]);
   const [hostCourses, setHostCourses] = useState<Course[]>([]);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
+  const [viewingCourse, setViewingCourse] = useState<Course | null>(null);
   
   // Step 3: AI Matching
   const [courseMatches, setCourseMatches] = useState<CourseMatch[]>([]);
@@ -802,14 +806,24 @@ export function LearningAgreementGenerator() {
                               )}
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => addHomeCourse(course)}
-                            disabled={selectedHomeCourses.some(c => c.id === course.id)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setViewingCourse(course)}
+                              title="View course details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => addHomeCourse(course)}
+                              disabled={selectedHomeCourses.some(c => c.id === course.id)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))
                   )}
@@ -1106,6 +1120,61 @@ export function LearningAgreementGenerator() {
           </CardContent>
         </Card>
       )}
+
+      {/* Course Details Dialog */}
+      <Dialog open={!!viewingCourse} onOpenChange={(open) => !open && setViewingCourse(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              {viewingCourse?.course_code} - {viewingCourse?.course_name}
+            </DialogTitle>
+            <DialogDescription>
+              Course details and content description
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {viewingCourse?.department && (
+                <Badge variant="secondary">{viewingCourse.department}</Badge>
+              )}
+              <Badge variant="outline">{viewingCourse?.credits} Credits</Badge>
+              {viewingCourse?.ects_credits && (
+                <Badge variant="outline">{viewingCourse.ects_credits} ECTS</Badge>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Course Description
+              </h4>
+              <div className="bg-muted/50 rounded-lg p-4 text-sm">
+                {viewingCourse?.description || 'No description available for this course.'}
+              </div>
+            </div>
+            
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  if (viewingCourse) {
+                    addHomeCourse(viewingCourse);
+                    setViewingCourse(null);
+                  }
+                }}
+                disabled={selectedHomeCourses.some(c => c.id === viewingCourse?.id)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {selectedHomeCourses.some(c => c.id === viewingCourse?.id) ? 'Already Added' : 'Add to Selection'}
+              </Button>
+              <Button variant="outline" onClick={() => setViewingCourse(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
