@@ -560,9 +560,15 @@ export function LearningAgreementGenerator() {
   };
 
   const getMatchScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 bg-green-500/10';
+    if (score >= 70) return 'text-green-600 bg-green-500/10';
     if (score >= 50) return 'text-yellow-600 bg-yellow-500/10';
     return 'text-red-600 bg-red-500/10';
+  };
+
+  const getMatchScoreBadgeStyle = (score: number) => {
+    if (score >= 70) return 'bg-green-500 text-white hover:bg-green-600';
+    if (score >= 50) return 'bg-yellow-500 text-white hover:bg-yellow-600';
+    return 'bg-red-500 text-white hover:bg-red-600';
   };
 
   const hostUniversity = universities.find(u => u.id === hostUniversityId);
@@ -986,15 +992,20 @@ export function LearningAgreementGenerator() {
                               <span className="text-xs font-medium text-green-600">HOST UNIVERSITY</span>
                             </div>
                             {match.hostCourseId && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => setComparingMatch(match)}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Compare
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Badge className={`${getMatchScoreBadgeStyle(match.matchScore)} text-xs font-bold`}>
+                                  {match.matchScore}% Match
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => setComparingMatch(match)}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Compare
+                                </Button>
+                              </div>
                             )}
                           </div>
                           
