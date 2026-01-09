@@ -21,39 +21,57 @@ serve(async (req) => {
 
     console.log("Parsing transcript and matching courses...");
 
-    const systemPrompt = `You are an academic course matching expert. Your task is to:
-1. Parse the student's transcript text to extract course information
-2. Match each course with the best equivalent at the host university
-3. Calculate a match score (0-100) based on content similarity
+    const systemPrompt = `You are an academic course matching expert specializing in student mobility and credit transfer. Your task is to:
+1. Parse the student's transcript text to extract course information (code, name, credits, department)
+2. Match each home course with the BEST equivalent course at the host university based on CONTENT DESCRIPTION SIMILARITY
+3. Calculate an accurate match score (0-100) based on how well the course descriptions align
 
-CRITICAL MATCHING RULES:
-- DEPARTMENT MATCHING IS MANDATORY: A Civil Engineering course can ONLY match with Civil Engineering or closely related engineering courses (e.g., Structural Engineering). NEVER match engineering courses with Business, Economics, Psychology, or unrelated departments.
-- Subject area must align: A "Statics and Dynamics" course should match structural/mechanical engineering courses, NOT finance or marketing courses.
-- If no suitable match exists in the same department/field, return a match score of 0-20 and explain why no good match was found.
-- Match scores:
-  - 90-100: Same department, nearly identical course content and credits
-  - 70-89: Same/related department, similar content, minor differences
-  - 50-69: Related field, overlapping content
-  - 30-49: Loosely related, some transferable concepts
-  - 0-29: No suitable match or completely different fields (e.g., Civil Eng matched to Psychology)
+CRITICAL MATCHING RULES - READ CAREFULLY:
+
+1. DEPARTMENT MATCHING IS MANDATORY:
+   - Civil Engineering courses → ONLY match with Civil Engineering courses
+   - Computer Engineering courses → ONLY match with Computer Engineering courses
+   - Economics courses → ONLY match with Economics courses
+   - Business Administration → ONLY match with Business Administration courses
+   - Media and Visual Arts → ONLY match with Media and Visual Arts courses
+   - Industrial Design → ONLY match with Industrial Design courses
+   - NEVER match across unrelated fields (e.g., Engineering to Business, Arts to Engineering)
+
+2. CONTENT-BASED SCORING using course DESCRIPTIONS:
+   - 90-100: Same department, nearly identical topics in descriptions (e.g., both cover "equilibrium, trusses, frames, friction")
+   - 80-89: Same department, very similar content with minor topic differences
+   - 70-79: Same department, similar core topics but some variation in depth/scope
+   - 60-69: Same department, related topics with notable differences
+   - 50-59: Same department but only partially overlapping content
+   - 30-49: Related department, some transferable concepts
+   - 0-29: No suitable match OR cross-department mismatch (ALWAYS use this for mismatched departments!)
+
+3. EXAMPLES of correct matching:
+   - "Statics" (forces, equilibrium, trusses) → matches "Statics for Civil Engineers" (90%+)
+   - "Structural Analysis" (indeterminate structures) → matches "Structural Analysis" (90%+)
+   - "Data Structures" (lists, trees, queues) → matches "Data Structures and Abstractions" (90%+)
+   - "Statics" → does NOT match "Microeconomics" (0-10%, different department!)
+
+4. If no suitable match exists in the same/related department, return score 0-20 and explain why.
 
 Always respond using the provided tool/function.`;
 
-    const userPrompt = `Parse this transcript and match courses with the host university:
+    const userPrompt = `Match home university courses with host university courses based on CONTENT SIMILARITY.
 
-TRANSCRIPT TEXT:
+HOME COURSES (from student's transcript):
 ${transcriptText}
 
-HOST UNIVERSITY COURSES:
+HOST UNIVERSITY COURSES (available for matching):
 ${JSON.stringify(hostUniversityCourses, null, 2)}
 
-Extract courses from the transcript and find the best matching host courses. For each home course:
-1. FIRST identify the department/subject area of the home course
-2. ONLY consider host courses in the SAME or closely related department
-3. Then evaluate content similarity, credit equivalence, and learning outcomes
-4. If no host course exists in a related department, assign a low score (0-20) and explain the mismatch
+MATCHING INSTRUCTIONS:
+1. For each home course, identify its DEPARTMENT (e.g., "CE101 - Statics" → Civil Engineering)
+2. Filter host courses to ONLY those in the SAME department
+3. Compare course DESCRIPTIONS to find the best content match
+4. Score based on how many topics/concepts overlap between descriptions
+5. If no host course exists in the same department, score 0-20 and explain
 
-IMPORTANT: Never match courses across unrelated disciplines (e.g., Engineering → Business, Science → Arts).`;
+CRITICAL: A Civil Engineering course like "Statics" MUST match with a Civil Engineering course like "Statics for Civil Engineers", NOT with Economics, Business, or Computer courses. The department field in the host courses tells you which department each course belongs to.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
