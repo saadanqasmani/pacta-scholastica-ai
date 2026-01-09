@@ -70,6 +70,8 @@ interface CourseMatch {
   hostCourseName?: string;
   hostCredits?: number;
   hostEcts?: number | null;
+  hostDescription?: string | null;
+  hostDepartment?: string | null;
   matchScore: number;
   matchReason?: string;
   selected: boolean;
@@ -104,6 +106,7 @@ export function LearningAgreementGenerator() {
   // Step 3: AI Matching
   const [courseMatches, setCourseMatches] = useState<CourseMatch[]>([]);
   const [isMatching, setIsMatching] = useState(false);
+  const [comparingMatch, setComparingMatch] = useState<CourseMatch | null>(null);
   
   // Step 4: Generate
   const [isGenerating, setIsGenerating] = useState(false);
@@ -264,6 +267,8 @@ export function LearningAgreementGenerator() {
           hostCourseName: aiMatch?.hostCourseName || hostCourse?.course_name,
           hostCredits: aiMatch?.hostCredits || hostCourse?.credits,
           hostEcts: hostCourse?.ects_credits,
+          hostDescription: hostCourse?.description,
+          hostDepartment: hostCourse?.department,
           matchScore: aiMatch?.matchScore || 0,
           matchReason: aiMatch?.matchReason,
           selected: (aiMatch?.matchScore || 0) >= 50,
@@ -293,6 +298,8 @@ export function LearningAgreementGenerator() {
         hostCourseName: hostCourse.course_name,
         hostCredits: hostCourse.credits,
         hostEcts: hostCourse.ects_credits,
+        hostDescription: hostCourse.description,
+        hostDepartment: hostCourse.department,
         matchScore: 100, // Manual selection = 100% match
         selected: true,
       } : m
@@ -947,25 +954,48 @@ export function LearningAgreementGenerator() {
                       <div className="flex-1 grid gap-4 md:grid-cols-2">
                         {/* Home Course */}
                         <div className="space-y-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                          <div className="flex items-center gap-2">
-                            <BookOpen className="h-4 w-4 text-blue-600" />
-                            <span className="text-xs font-medium text-blue-600">HOME UNIVERSITY</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-blue-600" />
+                              <span className="text-xs font-medium text-blue-600">HOME UNIVERSITY</span>
+                            </div>
                           </div>
                           <p className="font-medium">{match.homeCourse.code}</p>
                           <p className="text-sm text-muted-foreground">{match.homeCourse.name}</p>
+                          {match.homeCourse.department && (
+                            <Badge variant="outline" className="text-[10px]">{match.homeCourse.department}</Badge>
+                          )}
                           <div className="flex gap-2">
                             <Badge variant="secondary">{match.homeCourse.credits} credits</Badge>
                             {match.homeCourse.ects && (
                               <Badge variant="secondary">{match.homeCourse.ects} ECTS</Badge>
                             )}
                           </div>
+                          {match.homeCourse.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 border-t pt-2 mt-2">
+                              {match.homeCourse.description}
+                            </p>
+                          )}
                         </div>
                         
                         {/* Host Course */}
                         <div className="space-y-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="h-4 w-4 text-green-600" />
-                            <span className="text-xs font-medium text-green-600">HOST UNIVERSITY</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="h-4 w-4 text-green-600" />
+                              <span className="text-xs font-medium text-green-600">HOST UNIVERSITY</span>
+                            </div>
+                            {match.hostCourseId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => setComparingMatch(match)}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Compare
+                              </Button>
+                            )}
                           </div>
                           
                           <Select 
@@ -985,12 +1015,22 @@ export function LearningAgreementGenerator() {
                           </Select>
                           
                           {match.hostCourseId && (
-                            <div className="flex gap-2">
-                              <Badge variant="secondary">{match.hostCredits} credits</Badge>
-                              {match.hostEcts && (
-                                <Badge variant="secondary">{match.hostEcts} ECTS</Badge>
+                            <>
+                              {match.hostDepartment && (
+                                <Badge variant="outline" className="text-[10px]">{match.hostDepartment}</Badge>
                               )}
-                            </div>
+                              <div className="flex gap-2">
+                                <Badge variant="secondary">{match.hostCredits} credits</Badge>
+                                {match.hostEcts && (
+                                  <Badge variant="secondary">{match.hostEcts} ECTS</Badge>
+                                )}
+                              </div>
+                              {match.hostDescription && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 border-t pt-2 mt-2">
+                                  {match.hostDescription}
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -1035,6 +1075,117 @@ export function LearningAgreementGenerator() {
               )}
             </Button>
           </div>
+
+          {/* Side-by-side Comparison Dialog */}
+          <Dialog open={!!comparingMatch} onOpenChange={() => setComparingMatch(null)}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  Course Comparison
+                </DialogTitle>
+                <DialogDescription>
+                  Side-by-side comparison of home and host course content
+                </DialogDescription>
+              </DialogHeader>
+              {comparingMatch && (
+                <div className="grid gap-6 md:grid-cols-2 mt-4">
+                  {/* Home Course Details */}
+                  <div className="space-y-4 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                    <div className="flex items-center gap-2 pb-2 border-b border-blue-500/20">
+                      <BookOpen className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-blue-600">Home Course</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Course Code</p>
+                      <p className="font-medium">{comparingMatch.homeCourse.code}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Course Name</p>
+                      <p className="font-medium">{comparingMatch.homeCourse.name}</p>
+                    </div>
+                    {comparingMatch.homeCourse.department && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Department</p>
+                        <Badge variant="secondary">{comparingMatch.homeCourse.department}</Badge>
+                      </div>
+                    )}
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Credits</p>
+                        <p className="font-medium">{comparingMatch.homeCourse.credits}</p>
+                      </div>
+                      {comparingMatch.homeCourse.ects && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">ECTS</p>
+                          <p className="font-medium">{comparingMatch.homeCourse.ects}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Description</p>
+                      <div className="p-3 rounded bg-background border text-sm max-h-[200px] overflow-y-auto">
+                        {comparingMatch.homeCourse.description || 'No description available'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Host Course Details */}
+                  <div className="space-y-4 p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <div className="flex items-center gap-2 pb-2 border-b border-green-500/20">
+                      <GraduationCap className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-600">Host Course</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Course Code</p>
+                      <p className="font-medium">{comparingMatch.hostCourseCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Course Name</p>
+                      <p className="font-medium">{comparingMatch.hostCourseName}</p>
+                    </div>
+                    {comparingMatch.hostDepartment && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Department</p>
+                        <Badge variant="secondary">{comparingMatch.hostDepartment}</Badge>
+                      </div>
+                    )}
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Credits</p>
+                        <p className="font-medium">{comparingMatch.hostCredits}</p>
+                      </div>
+                      {comparingMatch.hostEcts && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">ECTS</p>
+                          <p className="font-medium">{comparingMatch.hostEcts}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Description</p>
+                      <div className="p-3 rounded bg-background border text-sm max-h-[200px] overflow-y-auto">
+                        {comparingMatch.hostDescription || 'No description available'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {comparingMatch && (
+                <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Match Score</span>
+                    <Badge className={`${comparingMatch.matchScore >= 70 ? 'bg-green-600' : comparingMatch.matchScore >= 50 ? 'bg-yellow-600' : 'bg-red-600'}`}>
+                      {comparingMatch.matchScore}%
+                    </Badge>
+                  </div>
+                  {comparingMatch.matchReason && (
+                    <p className="text-sm text-muted-foreground mt-2">{comparingMatch.matchReason}</p>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
