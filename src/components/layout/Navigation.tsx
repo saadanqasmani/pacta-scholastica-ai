@@ -7,6 +7,7 @@ import {
   FileText,
   Plane,
   TrendingUp,
+  FolderOpen,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -24,6 +25,7 @@ const navItems: NavItem[] = [
   { to: '/mobility', labelKey: 'mobility.title', icon: Plane },
   { to: '/mou', labelKey: 'mou.title', icon: FileText },
   { to: '/recruitment', labelKey: 'recruitment.title', icon: TrendingUp },
+  { to: '/documentation', labelKey: 'nav.documentation', icon: FolderOpen },
 ];
 
 export function Navigation() {
