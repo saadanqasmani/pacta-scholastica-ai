@@ -49,6 +49,45 @@ export type Database = {
           },
         ]
       }
+      country_document_rules: {
+        Row: {
+          country_code: string
+          country_name: string
+          created_at: string
+          document_name: string
+          education_system: string | null
+          how_to_obtain: string | null
+          id: string
+          notes: string | null
+          specific_requirements: string | null
+          stamps_required: string[] | null
+        }
+        Insert: {
+          country_code: string
+          country_name: string
+          created_at?: string
+          document_name: string
+          education_system?: string | null
+          how_to_obtain?: string | null
+          id?: string
+          notes?: string | null
+          specific_requirements?: string | null
+          stamps_required?: string[] | null
+        }
+        Update: {
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          document_name?: string
+          education_system?: string | null
+          how_to_obtain?: string | null
+          id?: string
+          notes?: string | null
+          specific_requirements?: string | null
+          stamps_required?: string[] | null
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           course_code: string
@@ -127,6 +166,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_requirement_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          document_category: string
+          document_name: string
+          id: string
+          is_required: boolean | null
+          sort_order: number | null
+          stage_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          document_category: string
+          document_name: string
+          id?: string
+          is_required?: boolean | null
+          sort_order?: number | null
+          stage_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          document_category?: string
+          document_name?: string
+          id?: string
+          is_required?: boolean | null
+          sort_order?: number | null
+          stage_type?: string
+        }
+        Relationships: []
       }
       faculties: {
         Row: {
@@ -889,6 +961,115 @@ export type Database = {
           },
           {
             foreignKeyName: "student_applications_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_document_items: {
+        Row: {
+          created_at: string
+          document_category: string
+          document_name: string
+          document_url: string | null
+          id: string
+          stamps_verified: string[] | null
+          status: string
+          student_document_id: string
+          updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_category: string
+          document_name: string
+          document_url?: string | null
+          id?: string
+          stamps_verified?: string[] | null
+          status?: string
+          student_document_id: string
+          updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_category?: string
+          document_name?: string
+          document_url?: string | null
+          id?: string
+          stamps_verified?: string[] | null
+          status?: string
+          student_document_id?: string
+          updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_document_items_student_document_id_fkey"
+            columns: ["student_document_id"]
+            isOneToOne: false
+            referencedRelation: "student_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_documents: {
+        Row: {
+          country_of_origin: string
+          created_at: string
+          degree_level: string
+          education_system: string | null
+          id: string
+          notes: string | null
+          stage: string
+          status: string
+          student_email: string | null
+          student_id_number: string | null
+          student_name: string
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          country_of_origin: string
+          created_at?: string
+          degree_level: string
+          education_system?: string | null
+          id?: string
+          notes?: string | null
+          stage: string
+          status?: string
+          student_email?: string | null
+          student_id_number?: string | null
+          student_name: string
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          country_of_origin?: string
+          created_at?: string
+          degree_level?: string
+          education_system?: string | null
+          id?: string
+          notes?: string | null
+          stage?: string
+          status?: string
+          student_email?: string | null
+          student_id_number?: string | null
+          student_name?: string
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_documents_university_id_fkey"
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
