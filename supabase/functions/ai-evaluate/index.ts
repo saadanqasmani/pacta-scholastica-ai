@@ -225,7 +225,7 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 4096,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     });
@@ -243,25 +243,39 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
     }
 
     const aiResponse = await response.json();
+    const finishReason = aiResponse.choices?.[0]?.finish_reason;
     let content = aiResponse.choices?.[0]?.message?.content || "";
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    console.log("AI response finish_reason:", finishReason, "content length:", content.length);
 
     let evaluationData;
     try {
       evaluationData = JSON.parse(content);
     } catch (parseError) {
+      // If response was truncated (finish_reason=length), try to repair
       let fixedContent = content;
+
+      // Remove any trailing incomplete string value (truncated mid-string)
+      // Find last complete JSON entry by locating last complete object/array
+      fixedContent = fixedContent.replace(/,\s*"[^"]*"?\s*:?\s*"?[^"{}[\]]*$/, "");
+      // Also handle truncation mid-object in an array
+      fixedContent = fixedContent.replace(/,\s*\{[^}]*$/, "");
+
+      // Close any unclosed brackets/braces
       const openBraces = (fixedContent.match(/{/g) || []).length;
       const closeBraces = (fixedContent.match(/}/g) || []).length;
       const openBrackets = (fixedContent.match(/\[/g) || []).length;
       const closeBrackets = (fixedContent.match(/]/g) || []).length;
       for (let i = 0; i < openBrackets - closeBrackets; i++) fixedContent += "]";
       for (let i = 0; i < openBraces - closeBraces; i++) fixedContent += "}";
+
       try {
         evaluationData = JSON.parse(fixedContent);
+        console.log("Successfully repaired truncated JSON response");
       } catch (e) {
-        console.error("Failed to parse AI response after repair:", content.substring(0, 500));
-        throw new Error("Failed to parse AI evaluation response");
+        console.error("Failed to parse AI response after repair. finish_reason:", finishReason, "content preview:", content.substring(0, 500));
+        throw new Error("Failed to parse AI evaluation response. The AI response was truncated. Please try again.");
       }
     }
 
