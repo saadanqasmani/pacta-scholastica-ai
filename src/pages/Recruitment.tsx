@@ -37,9 +37,11 @@ import {
   ShieldCheck,
   School,
   Flag,
+  Briefcase,
 } from 'lucide-react';
 import { StudentPlacementTab } from '@/components/recruitment/StudentPlacementTab';
 import { NationalityDistributionTab } from '@/components/recruitment/NationalityDistributionTab';
+import { FairsTab } from '@/components/recruitment/FairsTab';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Years available
@@ -785,6 +787,10 @@ export default function Recruitment() {
             <Flag className="h-3 w-3" />
             Nationalities
           </TabsTrigger>
+          <TabsTrigger value="fairs" className="gap-1">
+            <Briefcase className="h-3 w-3" />
+            Fairs
+          </TabsTrigger>
           <TabsTrigger value="intelligence">{t('recruitment.marketIntelligence')}</TabsTrigger>
         </TabsList>
 
@@ -989,6 +995,10 @@ export default function Recruitment() {
 
         <TabsContent value="nationalities">
           <NationalityDistributionTab />
+        </TabsContent>
+
+        <TabsContent value="fairs">
+          <FairsTab />
         </TabsContent>
 
         <TabsContent value="intelligence">
