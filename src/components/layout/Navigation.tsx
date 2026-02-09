@@ -8,6 +8,7 @@ import {
   Plane,
   TrendingUp,
   FolderOpen,
+  BarChart3,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -22,6 +23,7 @@ const navItems: NavItem[] = [
   { to: '/profile', labelKey: 'profile.title', icon: Building2 },
   { to: '/partners', labelKey: 'partners.title', icon: Handshake },
   { to: '/partnerships', labelKey: 'nav.partnerships', icon: Handshake },
+  { to: '/partner-analytics', labelKey: 'nav.partnerAnalytics', icon: BarChart3 },
   { to: '/mobility', labelKey: 'mobility.title', icon: Plane },
   { to: '/mou', labelKey: 'mou.title', icon: FileText },
   { to: '/recruitment', labelKey: 'recruitment.title', icon: TrendingUp },
