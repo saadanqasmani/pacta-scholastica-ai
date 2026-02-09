@@ -55,6 +55,7 @@ import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PartnerRequest, PartnerProject, PartnerMessage, University, PartnerROI } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
+import { MOUGeneratorDialog } from '@/components/partners/MOUGeneratorDialog';
 
 interface PartnerWithData {
   university: University;
@@ -98,6 +99,9 @@ export default function PartnershipManagement() {
 
   // Request Dialog
   const [requestDialog, setRequestDialog] = useState<{ open: boolean; request?: PartnerRequest; action?: 'accept' | 'reject' }>({ open: false });
+
+  // MOU Generator Dialog
+  const [mouGeneratorDialog, setMouGeneratorDialog] = useState<{ open: boolean; partnerId?: string; partnerName?: string; recommendation?: AIRecommendation }>({ open: false });
 
   useEffect(() => {
     if (selectedUniversity) {
@@ -482,16 +486,17 @@ export default function PartnershipManagement() {
                             onClick={() => {
                               const partner = partners.find(p => p.university.name === rec.partner_name);
                               if (partner) {
-                                setMessageDialog({ 
+                                setMouGeneratorDialog({ 
                                   open: true, 
                                   partnerId: partner.university.id,
-                                  partnerName: partner.university.name 
+                                  partnerName: partner.university.name,
+                                  recommendation: rec,
                                 });
                               }
                             }}
                           >
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Contact
+                            <Handshake className="h-4 w-4 mr-1" />
+                            Initiate MOU
                           </Button>
                         </div>
                       </CardContent>
@@ -797,6 +802,21 @@ export default function PartnershipManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* MOU Generator Dialog */}
+      {mouGeneratorDialog.partnerId && selectedUniversity && (() => {
+        const partnerUni = universities.find(u => u.id === mouGeneratorDialog.partnerId);
+        if (!partnerUni) return null;
+        return (
+          <MOUGeneratorDialog
+            open={mouGeneratorDialog.open}
+            onOpenChange={(open) => setMouGeneratorDialog({ ...mouGeneratorDialog, open })}
+            selectedUniversity={selectedUniversity}
+            partnerUniversity={partnerUni}
+            recommendation={mouGeneratorDialog.recommendation}
+            onSuccess={fetchAllData}
+          />
+        );
+      })()}
     </div>
   );
 }
