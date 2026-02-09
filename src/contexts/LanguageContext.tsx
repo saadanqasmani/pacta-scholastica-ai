@@ -31,6 +31,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.mou': 'MOU',
     'nav.partnerships': 'Partnerships',
     'nav.intelligence': 'Intelligence',
+    'nav.partnerAnalytics': 'Analytics',
     
     // Dashboard
     'dashboard.title': 'Dashboard',
@@ -214,6 +215,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.mou': 'MOU',
     'nav.partnerships': 'Ortaklıklar',
     'nav.intelligence': 'Pazar Analizi',
+    'nav.partnerAnalytics': 'Analitik',
     
     // Dashboard
     'dashboard.title': 'Gösterge Paneli',
@@ -397,6 +399,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.mou': 'MOU',
     'nav.partnerships': 'Partnerschaften',
     'nav.intelligence': 'Marktanalyse',
+    'nav.partnerAnalytics': 'Analytik',
     
     // Dashboard
     'dashboard.title': 'Dashboard',
@@ -580,6 +583,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.mou': 'مذكرة التفاهم',
     'nav.partnerships': 'الشراكات',
     'nav.intelligence': 'تحليل السوق',
+    'nav.partnerAnalytics': 'التحليلات',
     
     // Dashboard
     'dashboard.title': 'لوحة التحكم',
