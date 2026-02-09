@@ -5,21 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Loader2, RefreshCw, Sparkles, Search, Filter, Building2 } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useAIEvaluation } from '@/hooks/useAIEvaluation';
 import { PartnerRecommendation, University } from '@/types/database';
 import { PartnerCard } from '@/components/partners/PartnerCard';
 import { UniversityProfileModal } from '@/components/partners/UniversityProfileModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PartnerRecommendationsResponse {
   recommendations: PartnerRecommendation[];
@@ -27,6 +23,7 @@ interface PartnerRecommendationsResponse {
 
 export default function Partners() {
   const { selectedUniversity, universities, isLoading: universitiesLoading } = useUniversity();
+  const { t } = useLanguage();
   const { data, isLoading, evaluate } = useAIEvaluation<PartnerRecommendationsResponse>('partner_recommendations');
   const [searchTerm, setSearchTerm] = useState('');
   const [regionFilter, setRegionFilter] = useState<string>('all');
@@ -36,7 +33,6 @@ export default function Partners() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Get unique regions from universities
   const regions = [...new Set(universities.map(u => u.region))].sort();
 
   useEffect(() => {
@@ -45,7 +41,6 @@ export default function Partners() {
     }
   }, [selectedUniversity?.id, viewMode]);
 
-  // Filter all universities (excluding selected)
   const filteredUniversities = universities
     .filter(u => u.id !== selectedUniversity?.id)
     .filter(u => {
@@ -55,7 +50,6 @@ export default function Partners() {
       return matchesSearch && matchesRegion;
     });
 
-  // Filter recommendations
   const filteredRecommendations = data?.recommendations?.filter(r => {
     const matchesSearch = r.university_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          r.country.toLowerCase().includes(searchTerm.toLowerCase());
@@ -69,8 +63,8 @@ export default function Partners() {
       navigate(`/mou?partner=${partner.id}`);
     } else {
       toast({
-        title: 'Partner not found',
-        description: 'Could not find the selected university.',
+        title: t('common.error'),
+        description: t('partners.noRecommendations'),
         variant: 'destructive',
       });
     }
@@ -92,29 +86,25 @@ export default function Partners() {
   if (universitiesLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Partner Discovery</h1>
-        <p className="text-muted-foreground">
-          AI-powered partner recommendations based on strategic alignment and complementarity
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('partners.title')}</h1>
+        <p className="text-muted-foreground">{t('partners.subtitle')}</p>
       </div>
 
-      {/* Context Card */}
       {selectedUniversity && (
         <Card className="border-l-4 border-l-primary">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
               <Building2 className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Finding partners for</p>
+                <p className="text-sm text-muted-foreground">{t('partners.findingPartnersFor')}</p>
                 <p className="font-semibold">{selectedUniversity.name}</p>
               </div>
             </div>
@@ -122,7 +112,6 @@ export default function Partners() {
         </Card>
       )}
 
-      {/* Controls */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
           <Button
@@ -131,14 +120,14 @@ export default function Partners() {
             onClick={() => setViewMode('recommended')}
           >
             <Sparkles className="h-4 w-4 mr-1" />
-            AI Recommended
+            {t('partners.aiRecommended')}
           </Button>
           <Button
             variant={viewMode === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('all')}
           >
-            All Universities
+            {t('partners.allUniversities')}
           </Button>
         </div>
 
@@ -146,7 +135,7 @@ export default function Partners() {
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search universities..."
+              placeholder={t('partners.search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -156,10 +145,10 @@ export default function Partners() {
             <Select value={regionFilter} onValueChange={setRegionFilter}>
               <SelectTrigger className="w-40">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Region" />
+                <SelectValue placeholder={t('common.region')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Regions</SelectItem>
+                <SelectItem value="all">{t('partners.allRegions')}</SelectItem>
                 {regions.map(region => (
                   <SelectItem key={region} value={region}>{region}</SelectItem>
                 ))}
@@ -183,13 +172,12 @@ export default function Partners() {
         </div>
       </div>
 
-      {/* Content */}
       {viewMode === 'recommended' ? (
         isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <span className="text-muted-foreground">Analyzing strategic partnerships...</span>
+              <span className="text-muted-foreground">{t('partners.analyzingPartnerships')}</span>
             </div>
           </div>
         ) : filteredRecommendations.length > 0 ? (
@@ -197,7 +185,7 @@ export default function Partners() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">
-                {filteredRecommendations.length} AI-recommended partners
+                {filteredRecommendations.length} {t('partners.aiRecommendedPartners')}
               </span>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -215,20 +203,19 @@ export default function Partners() {
           <Card>
             <CardContent className="flex h-48 flex-col items-center justify-center">
               <Sparkles className="h-10 w-10 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground mb-4">No recommendations generated yet</p>
+              <p className="text-muted-foreground mb-4">{t('partners.noRecommendations')}</p>
               <Button onClick={() => selectedUniversity && evaluate(selectedUniversity.id)}>
-                Generate Recommendations
+                {t('partners.generateRecommendations')}
               </Button>
             </CardContent>
           </Card>
         )
       ) : (
-        /* All Universities View */
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">
-              {filteredUniversities.length} universities available
+              {filteredUniversities.length} {t('partners.universitiesAvailable')}
             </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -247,41 +234,26 @@ export default function Partners() {
                       <h3 className="font-medium truncate">{university.name}</h3>
                       <p className="text-sm text-muted-foreground">{university.country}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {university.type}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {university.internationalization_maturity}
-                        </Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{university.type}</Badge>
+                        <Badge variant="secondary" className="text-xs capitalize">{university.internationalization_maturity}</Badge>
                         {university.ranking && (
-                          <Badge variant="default" className="text-xs">
-                            #{university.ranking}
-                          </Badge>
+                          <Badge variant="default" className="text-xs">#{university.ranking}</Badge>
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-3">
                     <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="flex-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCardClick(university);
-                      }}
+                      size="sm" variant="outline" className="flex-1"
+                      onClick={(e) => { e.stopPropagation(); handleCardClick(university); }}
                     >
-                      View Profile
+                      {t('partners.viewProfile')}
                     </Button>
                     <Button 
-                      size="sm"
-                      className="flex-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleInitiateMOU(university.name);
-                      }}
+                      size="sm" className="flex-1"
+                      onClick={(e) => { e.stopPropagation(); handleInitiateMOU(university.name); }}
                     >
-                      Initiate MOU
+                      {t('partners.initiateMOU')}
                     </Button>
                   </div>
                 </CardContent>
@@ -291,7 +263,6 @@ export default function Partners() {
         </div>
       )}
 
-      {/* University Profile Modal */}
       <UniversityProfileModal
         university={selectedProfileUniversity}
         isOpen={isProfileModalOpen}

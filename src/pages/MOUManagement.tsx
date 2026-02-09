@@ -1,43 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { 
-  FileText, 
-  Building2, 
-  ArrowLeftRight, 
-  Sparkles, 
-  Loader2, 
-  Save,
-  Plus,
-  RefreshCw,
-  CheckCircle,
-  Globe,
-  Search,
-  Trash2,
-  MoreHorizontal
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { FileText, Building2, ArrowLeftRight, Sparkles, Loader2, Save, Plus, RefreshCw, CheckCircle, Globe, Search, Trash2, MoreHorizontal } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MOU, MOUClause, University } from '@/types/database';
 import { ClauseEditor } from '@/components/mou/ClauseEditor';
@@ -45,14 +17,14 @@ import { StatusWorkflow, StatusTimeline } from '@/components/mou/StatusWorkflow'
 import { useToast } from '@/hooks/use-toast';
 
 const COOPERATION_SCOPES = [
-  { id: 'student_exchange', label: 'Student Exchange' },
-  { id: 'faculty_exchange', label: 'Faculty Exchange' },
-  { id: 'joint_research', label: 'Joint Research' },
-  { id: 'joint_degree', label: 'Joint Degree Programs' },
-  { id: 'summer_school', label: 'Summer Schools' },
-  { id: 'conferences', label: 'Joint Conferences' },
-  { id: 'publications', label: 'Joint Publications' },
-  { id: 'resource_sharing', label: 'Resource Sharing' },
+  { id: 'student_exchange', labelKey: 'mou.scope.studentExchange' },
+  { id: 'faculty_exchange', labelKey: 'mou.scope.facultyExchange' },
+  { id: 'joint_research', labelKey: 'mou.scope.jointResearch' },
+  { id: 'joint_degree', labelKey: 'mou.scope.jointDegree' },
+  { id: 'summer_school', labelKey: 'mou.scope.summerSchool' },
+  { id: 'conferences', labelKey: 'mou.scope.conferences' },
+  { id: 'publications', labelKey: 'mou.scope.publications' },
+  { id: 'resource_sharing', labelKey: 'mou.scope.resourceSharing' },
 ];
 
 interface SuggestedClause {
@@ -66,6 +38,7 @@ export default function MOUManagement() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { selectedUniversity, universities } = useUniversity();
+  const { t } = useLanguage();
   const { toast } = useToast();
 
   const partnerId = searchParams.get('partner');
@@ -80,7 +53,6 @@ export default function MOUManagement() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; status: string } | null>(null);
 
-  // Form state
   const [cooperationScope, setCooperationScope] = useState<string[]>([]);
   const [clauses, setClauses] = useState<MOUClause[]>([]);
   const [status, setStatus] = useState<MOU['status']>('draft');
@@ -96,39 +68,21 @@ export default function MOUManagement() {
   const loadOrCreateMOU = async () => {
     if (!selectedUniversity) return;
     setIsLoading(true);
-
     try {
       if (mouId) {
-        // Load existing MOU
-        const { data, error } = await supabase
-          .from('mous')
-          .select('*')
-          .eq('id', mouId)
-          .single();
-
+        const { data, error } = await supabase.from('mous').select('*').eq('id', mouId).single();
         if (error) throw error;
         if (data) {
           setMou(data as unknown as MOU);
           setCooperationScope(data.cooperation_scope || []);
           setClauses((data.clauses as unknown as MOUClause[]) || []);
           setStatus(data.status as MOU['status']);
-          
-          // Find partner
-          const pId = data.initiator_university_id === selectedUniversity.id 
-            ? data.partner_university_id 
-            : data.initiator_university_id;
+          const pId = data.initiator_university_id === selectedUniversity.id ? data.partner_university_id : data.initiator_university_id;
           const foundPartner = universities.find(u => u.id === pId);
           if (foundPartner) setPartner(foundPartner);
         }
       } else if (partnerId) {
-        // Check for existing MOU with this partner
-        const { data: existingMOU } = await supabase
-          .from('mous')
-          .select('*')
-          .or(`and(initiator_university_id.eq.${selectedUniversity.id},partner_university_id.eq.${partnerId}),and(initiator_university_id.eq.${partnerId},partner_university_id.eq.${selectedUniversity.id})`)
-          .not('status', 'eq', 'rejected')
-          .maybeSingle();
-
+        const { data: existingMOU } = await supabase.from('mous').select('*').or(`and(initiator_university_id.eq.${selectedUniversity.id},partner_university_id.eq.${partnerId}),and(initiator_university_id.eq.${partnerId},partner_university_id.eq.${selectedUniversity.id})`).not('status', 'eq', 'rejected').maybeSingle();
         if (existingMOU) {
           setMou(existingMOU as unknown as MOU);
           setCooperationScope(existingMOU.cooperation_scope || []);
@@ -138,11 +92,7 @@ export default function MOUManagement() {
       }
     } catch (error) {
       console.error('Error loading MOU:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load MOU data',
-        variant: 'destructive',
-      });
+      toast({ title: t('common.error'), description: 'Failed to load MOU data', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +101,6 @@ export default function MOUManagement() {
   const handleSave = async () => {
     if (!selectedUniversity || !partner) return;
     setIsSaving(true);
-
     try {
       const mouData = {
         initiator_university_id: selectedUniversity.id,
@@ -160,53 +109,21 @@ export default function MOUManagement() {
         cooperation_scope: cooperationScope,
         clauses: JSON.parse(JSON.stringify(clauses)),
       };
-
       if (mou?.id) {
-        // Update existing
-        const { error } = await supabase
-          .from('mous')
-          .update(mouData)
-          .eq('id', mou.id);
-
+        const { error } = await supabase.from('mous').update(mouData).eq('id', mou.id);
         if (error) throw error;
-        
-        // Log to history
-        await supabase.from('mou_history').insert({
-          mou_id: mou.id,
-          actor_university_id: selectedUniversity.id,
-          action: 'updated',
-          changes: { status, clauses_count: clauses.length },
-        });
-
-        toast({ title: 'Saved', description: 'MOU updated successfully' });
+        await supabase.from('mou_history').insert({ mou_id: mou.id, actor_university_id: selectedUniversity.id, action: 'updated', changes: { status, clauses_count: clauses.length } });
+        toast({ title: t('mou.saved'), description: t('mou.savedDesc') });
       } else {
-        // Create new
-        const { data, error } = await supabase
-          .from('mous')
-          .insert(mouData)
-          .select()
-          .single();
-
+        const { data, error } = await supabase.from('mous').insert(mouData).select().single();
         if (error) throw error;
         setMou(data as unknown as MOU);
-        
-        // Log creation
-        await supabase.from('mou_history').insert({
-          mou_id: data.id,
-          actor_university_id: selectedUniversity.id,
-          action: 'created',
-          changes: null,
-        });
-
-        toast({ title: 'Created', description: 'MOU created successfully' });
+        await supabase.from('mou_history').insert({ mou_id: data.id, actor_university_id: selectedUniversity.id, action: 'created', changes: null });
+        toast({ title: t('mou.created'), description: t('mou.createdDesc') });
       }
     } catch (error) {
       console.error('Error saving MOU:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save MOU',
-        variant: 'destructive',
-      });
+      toast({ title: t('mou.error'), description: t('mou.errorDesc'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -224,22 +141,9 @@ export default function MOUManagement() {
     setStatus(newStatus);
     if (mou?.id && selectedUniversity) {
       try {
-        await supabase
-          .from('mous')
-          .update({ status: newStatus })
-          .eq('id', mou.id);
-
-        await supabase.from('mou_history').insert({
-          mou_id: mou.id,
-          actor_university_id: selectedUniversity.id,
-          action: `status_changed_to_${newStatus}`,
-          changes: { from: status, to: newStatus },
-        });
-
-        toast({ 
-          title: 'Status Updated', 
-          description: `MOU status changed to ${newStatus}` 
-        });
+        await supabase.from('mous').update({ status: newStatus }).eq('id', mou.id);
+        await supabase.from('mou_history').insert({ mou_id: mou.id, actor_university_id: selectedUniversity.id, action: `status_changed_to_${newStatus}`, changes: { from: status, to: newStatus } });
+        toast({ title: t('mou.statusUpdated'), description: `MOU status changed to ${newStatus}` });
       } catch (error) {
         console.error('Error updating status:', error);
       }
@@ -251,17 +155,10 @@ export default function MOUManagement() {
     if (!selectedUniversity || !partner) return;
     setIsGeneratingClauses(true);
     setSuggestedClauses([]);
-
     try {
       const { data, error } = await supabase.functions.invoke('mou-suggest', {
-        body: {
-          cooperation_scope: cooperationScope,
-          initiator_name: selectedUniversity.name,
-          partner_name: partner.name,
-          existing_clauses: clauses,
-        },
+        body: { cooperation_scope: cooperationScope, initiator_name: selectedUniversity.name, partner_name: partner.name, existing_clauses: clauses },
       });
-
       if (error) throw error;
       if (data?.clauses) {
         setSuggestedClauses(data.clauses);
@@ -269,26 +166,17 @@ export default function MOUManagement() {
       }
     } catch (error) {
       console.error('Error generating suggestions:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate AI suggestions',
-        variant: 'destructive',
-      });
+      toast({ title: t('common.error'), description: 'Failed to generate AI suggestions', variant: 'destructive' });
     } finally {
       setIsGeneratingClauses(false);
     }
   };
 
   const addSuggestedClause = (suggestion: SuggestedClause) => {
-    const newClause: MOUClause = {
-      id: crypto.randomUUID(),
-      title: suggestion.title,
-      content: suggestion.content,
-      proposed_by: selectedUniversity?.id || 'ai',
-    };
+    const newClause: MOUClause = { id: crypto.randomUUID(), title: suggestion.title, content: suggestion.content, proposed_by: selectedUniversity?.id || 'ai' };
     setClauses([...clauses, newClause]);
     setSuggestedClauses(suggestedClauses.filter(s => s.title !== suggestion.title));
-    toast({ title: 'Added', description: `Clause "${suggestion.title}" added` });
+    toast({ title: t('common.success'), description: `Clause "${suggestion.title}" added` });
   };
 
   const isInitiator = mou ? mou.initiator_university_id === selectedUniversity?.id : true;
@@ -302,275 +190,129 @@ export default function MOUManagement() {
     );
   }
 
-  // Available partners (exclude self)
   const availablePartners = universities.filter(u => u.id !== selectedUniversity?.id);
 
   if (!partner) {
     return (
       <div className="space-y-6 animate-fade-in">
-        {/* Page Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">MOU Management</h1>
-          <p className="text-muted-foreground">
-            Draft, negotiate, and finalize memorandums of understanding
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('mou.title')}</h1>
+          <p className="text-muted-foreground">{t('mou.subtitle')}</p>
         </div>
-
-        {/* Partner Selection Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Select a Partner University
-            </CardTitle>
-            <CardDescription>
-              Choose a partner university to create or manage an MOU
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{t('mou.selectPartner')}</CardTitle>
+            <CardDescription>{t('mou.selectPartnerDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Select
-              value=""
-              onValueChange={(value) => {
-                const selectedPartner = universities.find(u => u.id === value);
-                if (selectedPartner) {
-                  setPartner(selectedPartner);
-                  navigate(`/mou?partner=${value}`);
-                }
-              }}
-            >
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue placeholder="Select a partner university..." />
-              </SelectTrigger>
+            <Select value="" onValueChange={(value) => {
+              const selectedPartner = universities.find(u => u.id === value);
+              if (selectedPartner) {
+                setPartner(selectedPartner);
+                navigate(`/mou?partner=${value}`);
+              }
+            }}>
+              <SelectTrigger className="w-full max-w-md"><SelectValue placeholder={t('mou.selectPartnerPlaceholder')} /></SelectTrigger>
               <SelectContent className="bg-background border shadow-lg z-50 max-h-[300px]">
                 {availablePartners.map((uni) => (
-                  <SelectItem key={uni.id} value={uni.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{uni.name}</span>
-                      <span className="text-muted-foreground text-xs">({uni.country})</span>
-                    </div>
-                  </SelectItem>
+                  <SelectItem key={uni.id} value={uni.id}><div className="flex items-center gap-2"><span>{uni.name}</span><span className="text-muted-foreground text-xs">({uni.country})</span></div></SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
             <div className="text-sm text-muted-foreground">
-              Or browse partners on the{' '}
-              <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/partners')}>
-                Partner Discovery
-              </Button>{' '}
-              page to find the right match.
+              {t('mou.browsePartnersText')} <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/partners')}>{t('mou.partnerDiscovery')}</Button> {t('mou.pageToFindMatch')}
             </div>
           </CardContent>
         </Card>
-
-        {/* Existing MOUs Section */}
-        <ExistingMOUsList 
-          universityId={selectedUniversity?.id} 
-          universities={universities}
-          onSelectMOU={(mouId) => navigate(`/mou?mou=${mouId}`)}
-        />
+        <ExistingMOUsList universityId={selectedUniversity?.id} universities={universities} onSelectMOU={(mouId) => navigate(`/mou?mou=${mouId}`)} />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">MOU Management</h1>
-        <p className="text-muted-foreground">
-          Draft, negotiate, and finalize memorandums of understanding
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('mou.title')}</h1>
+        <p className="text-muted-foreground">{t('mou.subtitle')}</p>
       </div>
-
-      {/* Partnership Header */}
       <Card className="border-l-4 border-l-primary">
         <CardContent className="py-6">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <Building2 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Initiator</p>
-                  <p className="font-semibold">{selectedUniversity?.name}</p>
-                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"><Building2 className="h-6 w-6 text-primary" /></div>
+                <div><p className="text-sm text-muted-foreground">{t('mou.initiator')}</p><p className="font-semibold">{selectedUniversity?.name}</p></div>
               </div>
               <ArrowLeftRight className="h-5 w-5 text-muted-foreground" />
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                  <Building2 className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Partner</p>
-                  <p className="font-semibold">{partner.name}</p>
-                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary"><Building2 className="h-6 w-6 text-muted-foreground" /></div>
+                <div><p className="text-sm text-muted-foreground">{t('mou.partner')}</p><p className="font-semibold">{partner.name}</p></div>
               </div>
             </div>
-            <StatusWorkflow
-              currentStatus={status}
-              onStatusChange={handleStatusChange}
-              isInitiator={isInitiator}
-              disabled={!mou?.id}
-            />
+            <StatusWorkflow currentStatus={status} onStatusChange={handleStatusChange} isInitiator={isInitiator} disabled={!mou?.id} />
           </div>
           <Separator className="my-4" />
           <StatusTimeline currentStatus={status} />
         </CardContent>
       </Card>
-
-      {/* Cooperation Scope */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Cooperation Scope</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg">{t('mou.cooperationScope')}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {COOPERATION_SCOPES.map((scope) => (
               <div key={scope.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={scope.id}
-                  checked={cooperationScope.includes(scope.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setCooperationScope([...cooperationScope, scope.id]);
-                    } else {
-                      setCooperationScope(cooperationScope.filter(s => s !== scope.id));
-                    }
-                  }}
-                  disabled={!isEditable}
-                />
-                <label
-                  htmlFor={scope.id}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {scope.label}
-                </label>
+                <Checkbox id={scope.id} checked={cooperationScope.includes(scope.id)} onCheckedChange={(checked) => { if (checked) setCooperationScope([...cooperationScope, scope.id]); else setCooperationScope(cooperationScope.filter(s => s !== scope.id)); }} disabled={!isEditable} />
+                <label htmlFor={scope.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{t(scope.labelKey)}</label>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-
-      {/* AI Suggestions */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI Clause Recommendations
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={generateAISuggestions}
-              disabled={isGeneratingClauses || cooperationScope.length === 0}
-            >
-              {isGeneratingClauses ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Generate Suggestions
+            <CardTitle className="text-lg flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />{t('mou.aiClauseRecommendations')}</CardTitle>
+            <Button variant="outline" size="sm" onClick={generateAISuggestions} disabled={isGeneratingClauses || cooperationScope.length === 0}>
+              {isGeneratingClauses ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}{t('mou.generateSuggestions')}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {cooperationScope.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Select cooperation scope areas above to generate AI recommendations
-            </p>
-          ) : suggestedClauses.length > 0 ? (
+          {cooperationScope.length === 0 ? <p className="text-sm text-muted-foreground">{t('mou.selectScopeFirst')}</p> : suggestedClauses.length > 0 ? (
             <div className="space-y-3">
               {suggestedClauses.map((suggestion, idx) => (
-                <div 
-                  key={idx}
-                  className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                >
+                <div key={idx} className="flex items-start justify-between gap-4 rounded-lg border p-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium">{suggestion.title}</h4>
-                      <Badge variant={suggestion.priority === 'essential' ? 'default' : 'secondary'} className="text-xs">
-                        {suggestion.priority}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {suggestion.category}
-                      </Badge>
+                      <Badge variant={suggestion.priority === 'essential' ? 'default' : 'secondary'} className="text-xs">{suggestion.priority}</Badge>
+                      <Badge variant="outline" className="text-xs">{suggestion.category}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{suggestion.content}</p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addSuggestedClause(suggestion)}
-                    disabled={!isEditable}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addSuggestedClause(suggestion)} disabled={!isEditable}><Plus className="h-4 w-4 mr-1" />{t('common.add')}</Button>
                 </div>
               ))}
             </div>
-          ) : isGeneratingClauses ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Click "Generate Suggestions" to get AI-powered clause recommendations
-            </p>
-          )}
+          ) : isGeneratingClauses ? <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : <p className="text-sm text-muted-foreground">Click "{t('mou.generateSuggestions')}" to get AI recommendations</p>}
         </CardContent>
       </Card>
-
-      {/* Clause Editor */}
-      <ClauseEditor
-        clauses={clauses}
-        onClausesChange={setClauses}
-        isEditable={isEditable}
-        currentUniversityId={selectedUniversity?.id}
-      />
-
-      {/* Actions */}
+      <ClauseEditor clauses={clauses} onClausesChange={setClauses} isEditable={isEditable} currentUniversityId={selectedUniversity?.id} />
       <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate('/partners')}>
-          Cancel
-        </Button>
+        <Button variant="outline" onClick={() => navigate('/partners')}>{t('common.cancel')}</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Save MOU
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}{t('mou.save')}
         </Button>
       </div>
-
-      {/* Confirmation Dialog */}
-      <AlertDialog 
-        open={confirmDialog?.open} 
-        onOpenChange={() => setConfirmDialog(null)}
-      >
+      <AlertDialog open={confirmDialog?.open} onOpenChange={() => setConfirmDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmDialog?.status === 'accepted' ? 'Accept Agreement?' : 'Reject Agreement?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog?.status === 'accepted' 
-                ? 'This will finalize the MOU and make it active. Both parties will be bound by the terms.'
-                : 'This will reject the MOU proposal. The initiator can create a new draft if needed.'}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{confirmDialog?.status === 'accepted' ? t('partnerships.accept') : t('partnerships.reject')}?</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDialog?.status === 'accepted' ? 'This will finalize the MOU and make it active.' : 'This will reject the MOU proposal.'}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => updateStatus(confirmDialog?.status as MOU['status'])}
-              className={confirmDialog?.status === 'rejected' ? 'bg-destructive text-destructive-foreground' : ''}
-            >
-              {confirmDialog?.status === 'accepted' ? 'Accept' : 'Reject'}
-            </AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => updateStatus(confirmDialog?.status as MOU['status'])} className={confirmDialog?.status === 'rejected' ? 'bg-destructive text-destructive-foreground' : ''}>{t('common.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -578,16 +320,7 @@ export default function MOUManagement() {
   );
 }
 
-// Component to show existing MOUs
-function ExistingMOUsList({ 
-  universityId, 
-  universities,
-  onSelectMOU 
-}: { 
-  universityId?: string; 
-  universities: University[];
-  onSelectMOU: (mouId: string) => void;
-}) {
+function ExistingMOUsList({ universityId, universities, onSelectMOU }: { universityId?: string; universities: University[]; onSelectMOU: (mouId: string) => void; }) {
   const [mous, setMous] = useState<MOU[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -598,374 +331,145 @@ function ExistingMOUsList({
   const [bulkNewStatus, setBulkNewStatus] = useState<string>('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!universityId) return;
-
     const fetchMOUs = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('mous')
-          .select('*')
-          .or(`initiator_university_id.eq.${universityId},partner_university_id.eq.${universityId}`)
-          .order('updated_at', { ascending: false });
-
+        const { data, error } = await supabase.from('mous').select('*').or(`initiator_university_id.eq.${universityId},partner_university_id.eq.${universityId}`).order('updated_at', { ascending: false });
         if (error) throw error;
         setMous((data || []) as unknown as MOU[]);
-      } catch (error) {
-        console.error('Error fetching MOUs:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      } catch (error) { console.error('Error fetching MOUs:', error); } finally { setIsLoading(false); }
     };
-
     fetchMOUs();
   }, [universityId]);
 
   const getPartnerName = (mou: MOU) => {
-    const partnerId = mou.initiator_university_id === universityId 
-      ? mou.partner_university_id 
-      : mou.initiator_university_id;
-    const partner = universities.find(u => u.id === partnerId);
-    return partner?.name || 'Unknown Partner';
+    const partnerId = mou.initiator_university_id === universityId ? mou.partner_university_id : mou.initiator_university_id;
+    return universities.find(u => u.id === partnerId)?.name || 'Unknown Partner';
   };
 
   const getPartnerCountry = (mou: MOU) => {
-    const partnerId = mou.initiator_university_id === universityId 
-      ? mou.partner_university_id 
-      : mou.initiator_university_id;
-    const partner = universities.find(u => u.id === partnerId);
-    return partner?.country || '';
+    const partnerId = mou.initiator_university_id === universityId ? mou.partner_university_id : mou.initiator_university_id;
+    return universities.find(u => u.id === partnerId)?.country || '';
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-      draft: 'secondary',
-      pending: 'outline',
-      pending_review: 'outline',
-      pending_approval: 'outline',
-      counter_proposed: 'outline',
-      revised: 'outline',
-      accepted: 'default',
-      rejected: 'destructive',
-    };
-    return variants[status] || 'secondary';
-  };
-
-  // Filter MOUs based on search and status
   const filteredMous = mous.filter(mou => {
-    const partnerName = getPartnerName(mou).toLowerCase();
-    const partnerCountry = getPartnerCountry(mou).toLowerCase();
-    const matchesSearch = searchQuery === '' || 
-      partnerName.includes(searchQuery.toLowerCase()) ||
-      partnerCountry.includes(searchQuery.toLowerCase());
+    const matchesSearch = searchQuery === '' || getPartnerName(mou).toLowerCase().includes(searchQuery.toLowerCase()) || getPartnerCountry(mou).toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || mou.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Get unique statuses for filter
-  const uniqueStatuses = [...new Set(mous.map(m => m.status))];
-
   const toggleSelectMou = (mouId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedMouIds(prev => 
-      prev.includes(mouId) 
-        ? prev.filter(id => id !== mouId)
-        : [...prev, mouId]
-    );
+    setSelectedMouIds(prev => prev.includes(mouId) ? prev.filter(id => id !== mouId) : [...prev, mouId]);
   };
 
   const toggleSelectAll = () => {
-    if (selectedMouIds.length === filteredMous.length) {
-      setSelectedMouIds([]);
-    } else {
-      setSelectedMouIds(filteredMous.map(m => m.id));
-    }
+    setSelectedMouIds(selectedMouIds.length === filteredMous.length ? [] : filteredMous.map(m => m.id));
   };
 
   const handleBulkStatusUpdate = async () => {
     if (!bulkNewStatus || selectedMouIds.length === 0 || !universityId) return;
     setIsBulkUpdating(true);
-
     try {
-      const { error } = await supabase
-        .from('mous')
-        .update({ status: bulkNewStatus })
-        .in('id', selectedMouIds);
-
+      const { error } = await supabase.from('mous').update({ status: bulkNewStatus }).in('id', selectedMouIds);
       if (error) throw error;
-
-      // Log history for each MOU
-      const historyEntries = selectedMouIds.map(mouId => ({
-        mou_id: mouId,
-        actor_university_id: universityId,
-        action: `bulk_status_changed_to_${bulkNewStatus}`,
-        changes: { to: bulkNewStatus },
-      }));
-      await supabase.from('mou_history').insert(historyEntries);
-
-      // Update local state
-      setMous(prev => prev.map(mou => 
-        selectedMouIds.includes(mou.id) 
-          ? { ...mou, status: bulkNewStatus as MOU['status'] }
-          : mou
-      ));
-
-      toast({ 
-        title: 'Status Updated', 
-        description: `Updated ${selectedMouIds.length} MOUs to "${bulkNewStatus.replace('_', ' ')}"` 
-      });
-      setSelectedMouIds([]);
-      setBulkStatusDialog(false);
-      setBulkNewStatus('');
-    } catch (error) {
-      console.error('Error updating MOUs:', error);
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to update MOUs', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
+      await supabase.from('mou_history').insert(selectedMouIds.map(mouId => ({ mou_id: mouId, actor_university_id: universityId, action: `bulk_status_changed_to_${bulkNewStatus}`, changes: { to: bulkNewStatus } })));
+      setMous(prev => prev.map(mou => selectedMouIds.includes(mou.id) ? { ...mou, status: bulkNewStatus as MOU['status'] } : mou));
+      toast({ title: t('mou.statusUpdated'), description: `Updated ${selectedMouIds.length} MOUs` });
+      setSelectedMouIds([]); setBulkStatusDialog(false); setBulkNewStatus('');
+    } catch (error) { console.error('Error updating MOUs:', error); toast({ title: t('mou.error'), variant: 'destructive' }); } finally { setIsBulkUpdating(false); }
   };
 
   const handleBulkDelete = async () => {
     if (selectedMouIds.length === 0) return;
     setIsBulkUpdating(true);
-
     try {
-      // First delete related history
-      await supabase
-        .from('mou_history')
-        .delete()
-        .in('mou_id', selectedMouIds);
-
-      // Then delete MOUs
-      const { error } = await supabase
-        .from('mous')
-        .delete()
-        .in('id', selectedMouIds);
-
+      await supabase.from('mou_history').delete().in('mou_id', selectedMouIds);
+      const { error } = await supabase.from('mous').delete().in('id', selectedMouIds);
       if (error) throw error;
-
-      // Update local state
       setMous(prev => prev.filter(mou => !selectedMouIds.includes(mou.id)));
-
-      toast({ 
-        title: 'Deleted', 
-        description: `Deleted ${selectedMouIds.length} MOUs` 
-      });
-      setSelectedMouIds([]);
-      setBulkDeleteDialog(false);
-    } catch (error) {
-      console.error('Error deleting MOUs:', error);
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to delete MOUs', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
+      toast({ title: t('common.success'), description: `Deleted ${selectedMouIds.length} MOUs` });
+      setSelectedMouIds([]); setBulkDeleteDialog(false);
+    } catch (error) { console.error('Error deleting MOUs:', error); toast({ title: t('mou.error'), variant: 'destructive' }); } finally { setIsBulkUpdating(false); }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (mous.length === 0) {
-    return null;
-  }
-
-  const allStatuses = ['draft', 'pending', 'pending_review', 'pending_approval', 'counter_proposed', 'revised', 'accepted', 'rejected'];
+  if (isLoading) return <Card><CardContent className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></CardContent></Card>;
+  if (mous.length === 0) return null;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Existing MOUs
-            <Badge variant="outline" className="ml-2">{mous.length}</Badge>
-          </CardTitle>
-          <CardDescription>
-            View and manage your existing memorandums of understanding
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{t('mou.existingMOUs')}<Badge variant="outline" className="ml-2">{mous.length}</Badge></CardTitle>
+          <CardDescription>View and manage existing MOUs</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Bulk Actions Bar */}
           {selectedMouIds.length > 0 && (
             <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20 animate-fade-in">
+              <div className="flex items-center gap-2"><Checkbox checked={selectedMouIds.length === filteredMous.length} onCheckedChange={toggleSelectAll} /><span className="text-sm font-medium">{selectedMouIds.length} selected</span></div>
               <div className="flex items-center gap-2">
-                <Checkbox 
-                  checked={selectedMouIds.length === filteredMous.length}
-                  onCheckedChange={toggleSelectAll}
-                />
-                <span className="text-sm font-medium">
-                  {selectedMouIds.length} selected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBulkStatusDialog(true)}
-                >
-                  <MoreHorizontal className="h-4 w-4 mr-1" />
-                  Update Status
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setBulkDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkStatusDialog(true)}><MoreHorizontal className="h-4 w-4 mr-1" />Update Status</Button>
+                <Button size="sm" variant="destructive" onClick={() => setBulkDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-1" />{t('common.delete')}</Button>
               </div>
             </div>
           )}
-
-          {/* Search and Filter */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by partner name or country..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+              <input type="text" placeholder={t('common.search')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
+              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder={t('mou.status')} /></SelectTrigger>
               <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="all">All Statuses</SelectItem>
-                {uniqueStatuses.map(status => (
-                  <SelectItem key={status} value={status} className="capitalize">
-                    {status.replace('_', ' ')}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">{t('specialCases.allStatuses')}</SelectItem>
+                {[...new Set(mous.map(m => m.status))].map(status => (<SelectItem key={status} value={status} className="capitalize">{status.replace('_', ' ')}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Results count */}
-          {(searchQuery || statusFilter !== 'all') && (
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredMous.length} of {mous.length} MOUs
-            </p>
-          )}
-
-          {/* MOU List */}
           <div className="space-y-2">
-            {filteredMous.length > 0 ? (
-              filteredMous.map((mou) => (
-                <div
-                  key={mou.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                    selectedMouIds.includes(mou.id) ? 'bg-primary/5 border-primary/30' : ''
-                  }`}
-                  onClick={() => onSelectMOU(mou.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={selectedMouIds.includes(mou.id)}
-                      onCheckedChange={() => {}}
-                      onClick={(e) => toggleSelectMou(mou.id, e)}
-                    />
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{getPartnerName(mou)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {getPartnerCountry(mou)} • {mou.cooperation_scope?.length || 0} cooperation areas
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadge(mou.status)} className="capitalize">
-                      {mou.status.replace('_', ' ')}
-                    </Badge>
-                    <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
-                  </div>
+            {filteredMous.length > 0 ? filteredMous.map((mou) => (
+              <div key={mou.id} className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${selectedMouIds.includes(mou.id) ? 'bg-primary/5 border-primary/30' : ''}`} onClick={() => onSelectMOU(mou.id)}>
+                <div className="flex items-center gap-3">
+                  <Checkbox checked={selectedMouIds.includes(mou.id)} onCheckedChange={() => {}} onClick={(e) => toggleSelectMou(mou.id, e)} />
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div><p className="font-medium">{getPartnerName(mou)}</p><p className="text-xs text-muted-foreground">{getPartnerCountry(mou)}</p></div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No MOUs match your search criteria</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant={['accepted'].includes(mou.status) ? 'default' : 'secondary'} className="capitalize">{mou.status.replace('_', ' ')}</Badge>
+                  <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
+                </div>
               </div>
-            )}
+            )) : <div className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2 opacity-50" /><p>{t('mou.noExistingMOUs')}</p></div>}
           </div>
         </CardContent>
       </Card>
-
-      {/* Bulk Status Update Dialog */}
       <AlertDialog open={bulkStatusDialog} onOpenChange={setBulkStatusDialog}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Update Status for {selectedMouIds.length} MOUs</AlertDialogTitle>
-            <AlertDialogDescription>
-              Select the new status to apply to all selected MOUs.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Update Status</AlertDialogTitle><AlertDialogDescription>Select new status.</AlertDialogDescription></AlertDialogHeader>
           <div className="py-4">
             <Select value={bulkNewStatus} onValueChange={setBulkNewStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select new status..." />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent className="bg-background border shadow-lg z-50">
-                {allStatuses.map(status => (
-                  <SelectItem key={status} value={status} className="capitalize">
-                    {status.replace('_', ' ')}
-                  </SelectItem>
-                ))}
+                {['draft', 'pending', 'accepted', 'rejected'].map(status => (<SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBulkUpdating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleBulkStatusUpdate}
-              disabled={!bulkNewStatus || isBulkUpdating}
-            >
-              {isBulkUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Update
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isBulkUpdating}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkStatusUpdate} disabled={!bulkNewStatus || isBulkUpdating}>Update</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Bulk Delete Confirmation Dialog */}
       <AlertDialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedMouIds.length} MOUs?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. All selected MOUs and their history will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete MOUs?</AlertDialogTitle><AlertDialogDescription>Cannot be undone.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBulkUpdating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleBulkDelete}
-              disabled={isBulkUpdating}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isBulkUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Delete
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isBulkUpdating}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} disabled={isBulkUpdating} className="bg-destructive text-destructive-foreground">{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
