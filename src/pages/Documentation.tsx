@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { SpecialCasesTracking } from '@/components/documentation/SpecialCasesTracking';
 import { 
   FileText, 
   GraduationCap, 
@@ -39,7 +40,8 @@ import {
   PauseCircle,
   PlayCircle,
   ArrowLeftRight,
-  Building2
+  Building2,
+  ShieldAlert,
 } from 'lucide-react';
 
 // Types
@@ -408,7 +410,7 @@ export default function Documentation() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
           <TabsTrigger value="requirements" className="flex items-center gap-2">
             <FileCheck className="h-4 w-4" />
             Requirements Checker
@@ -420,6 +422,10 @@ export default function Documentation() {
           <TabsTrigger value="tracking" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Student Tracking
+          </TabsTrigger>
+          <TabsTrigger value="special-cases" className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4" />
+            Special Cases
           </TabsTrigger>
         </TabsList>
 
@@ -1108,6 +1114,11 @@ export default function Documentation() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Special Cases Tab */}
+        <TabsContent value="special-cases" className="space-y-6">
+          <SpecialCasesTracking />
         </TabsContent>
       </Tabs>
     </div>
