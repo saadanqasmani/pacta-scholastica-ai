@@ -31,14 +31,16 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
         const typedData = (data || []) as University[];
         setUniversities(typedData);
         
-        // If user has a university, select it; otherwise select first available
+        // If user has a university, select it; otherwise default to İstanbul Nişantaşı Üniversitesi
+        const NISANTASI_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
         if (profile?.university_id) {
           const userUniversity = typedData.find(u => u.id === profile.university_id);
           if (userUniversity) {
             setSelectedUniversity(userUniversity);
           }
-        } else if (typedData.length > 0) {
-          setSelectedUniversity(typedData[0]);
+        } else {
+          const nisantasi = typedData.find(u => u.id === NISANTASI_ID);
+          setSelectedUniversity(nisantasi || typedData[0] || null);
         }
       } catch (error) {
         console.error('Error fetching universities:', error);
