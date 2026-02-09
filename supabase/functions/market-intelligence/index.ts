@@ -6,45 +6,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "Respond entirely in English. All text fields in the JSON must be in English.",
+  tr: "Tüm yanıtlarını Türkçe olarak ver. JSON içindeki tüm metin alanları (reasoning, vb.) Türkçe olmalı.",
+  de: "Antworte vollständig auf Deutsch. Alle Textfelder im JSON müssen auf Deutsch sein.",
+  ar: "أجب بالكامل باللغة العربية. جميع حقول النص في JSON يجب أن تكون بالعربية.",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { university_id } = await req.json();
+    const { university_id, language } = await req.json();
+    const lang = language || "en";
 
     if (!university_id) {
-      return new Response(
-        JSON.stringify({ error: "university_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "university_id is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch university data
-    const { data: university } = await supabase
-      .from("universities")
-      .select("*")
-      .eq("id", university_id)
-      .single();
+    const { data: university } = await supabase.from("universities").select("*").eq("id", university_id).single();
+    const { data: mobilityData } = await supabase.from("mobility_records").select("*").eq("university_id", university_id);
+    const { data: partnerships } = await supabase.from("university_partners").select("*, partner:partner_university_id(name, country)").eq("university_id", university_id);
 
-    // Fetch mobility data for market analysis
-    const { data: mobilityData } = await supabase
-      .from("mobility_records")
-      .select("*")
-      .eq("university_id", university_id);
-
-    // Fetch partner data
-    const { data: partnerships } = await supabase
-      .from("university_partners")
-      .select("*, partner:partner_university_id(name, country)")
-      .eq("university_id", university_id);
-
-    // Build context for AI
     const universityContext = `
 University: ${university?.name || "Unknown"}
 Country: ${university?.country || "Unknown"}
@@ -59,11 +48,13 @@ Partner Countries: ${[...new Set(partnerships?.map(p => p.partner?.country).filt
     `.trim();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const langInstruction = LANGUAGE_INSTRUCTIONS[lang] || LANGUAGE_INSTRUCTIONS.en;
 
     const systemPrompt = `You are an expert in international higher education recruitment and market intelligence. Analyze recruitment markets and provide actionable recommendations.
+
+${langInstruction}
 
 You must respond with a valid JSON object (no markdown, no code blocks) with this exact structure:
 {
@@ -106,24 +97,13 @@ You must respond with a valid JSON object (no markdown, no code blocks) with thi
   "generatedAt": "ISO date string"
 }
 
-Generate realistic simulated data for 8-12 recruitment markets based on the university context. Include a mix of:
-- High-performing markets to scale (good conversion, low risk)
-- Underperforming markets to pause (poor conversion, high waste)
-- Problematic markets to exit (institutional risk, over-reliance on agents)
-
-Consider factors like:
-- Conversion efficiency (applications to enrollments)
-- Over-offering vs capacity alignment
-- Application waste ratios
-- Agent-driven vs organic recruitment quality balance`;
+Generate realistic simulated data for 8-12 recruitment markets based on the university context.`;
 
     const userPrompt = `Analyze the recruitment markets for this university and generate market intelligence data with scale/pause/exit recommendations:
 
 ${universityContext}
 
-Generate realistic market data and AI recommendations based on the university's profile and typical patterns for institutions of this type.`;
-
-    console.log("Calling Lovable AI for market intelligence...");
+Generate realistic market data and AI recommendations based on the university's profile.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -141,18 +121,8 @@ Generate realistic market data and AI recommendations based on the university's 
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -160,41 +130,23 @@ Generate realistic market data and AI recommendations based on the university's 
 
     const aiResult = await response.json();
     const content = aiResult.choices?.[0]?.message?.content;
+    if (!content) throw new Error("No content in AI response");
 
-    if (!content) {
-      throw new Error("No content in AI response");
-    }
-
-    console.log("AI response received, parsing...");
-
-    // Clean and parse the JSON response
     let analysis;
     try {
       let cleanedContent = content.trim();
-      if (cleanedContent.startsWith("```json")) {
-        cleanedContent = cleanedContent.slice(7);
-      }
-      if (cleanedContent.startsWith("```")) {
-        cleanedContent = cleanedContent.slice(3);
-      }
-      if (cleanedContent.endsWith("```")) {
-        cleanedContent = cleanedContent.slice(0, -3);
-      }
+      if (cleanedContent.startsWith("```json")) cleanedContent = cleanedContent.slice(7);
+      if (cleanedContent.startsWith("```")) cleanedContent = cleanedContent.slice(3);
+      if (cleanedContent.endsWith("```")) cleanedContent = cleanedContent.slice(0, -3);
       analysis = JSON.parse(cleanedContent.trim());
     } catch (parseError) {
       console.error("Failed to parse AI response:", content);
       throw new Error("Failed to parse AI response as JSON");
     }
 
-    return new Response(
-      JSON.stringify({ analysis }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ analysis }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Market intelligence error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

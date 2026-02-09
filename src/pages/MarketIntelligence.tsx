@@ -55,7 +55,7 @@ interface MarketAnalysis {
 
 export default function MarketIntelligence() {
   const { selectedUniversity } = useUniversity();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<MarketAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +65,7 @@ export default function MarketIntelligence() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('market-intelligence', {
-        body: { university_id: selectedUniversity.id },
+        body: { university_id: selectedUniversity.id, language },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);

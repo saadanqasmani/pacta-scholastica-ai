@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type EvaluationType = 'health_index' | 'strengths_weaknesses' | 'department_roi' | 'partner_recommendations' | 'market_intelligence';
 
@@ -9,6 +10,7 @@ export function useAIEvaluation<T>(evaluationType: EvaluationType) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { language } = useLanguage();
 
   const evaluate = useCallback(async (universityId: string) => {
     if (!universityId) return;
@@ -18,7 +20,7 @@ export function useAIEvaluation<T>(evaluationType: EvaluationType) {
 
     try {
       const { data: result, error: fnError } = await supabase.functions.invoke('ai-evaluate', {
-        body: { university_id: universityId, evaluation_type: evaluationType },
+        body: { university_id: universityId, evaluation_type: evaluationType, language },
       });
 
       if (fnError) {
@@ -41,7 +43,7 @@ export function useAIEvaluation<T>(evaluationType: EvaluationType) {
     } finally {
       setIsLoading(false);
     }
-  }, [evaluationType, toast]);
+  }, [evaluationType, toast, language]);
 
   const reset = useCallback(() => {
     setData(null);

@@ -39,7 +39,7 @@ interface AIRecommendation {
 
 export default function PartnershipManagement() {
   const { selectedUniversity, universities } = useUniversity();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -100,7 +100,7 @@ export default function PartnershipManagement() {
     setIsGeneratingAI(true);
     try {
       const partnerSummary = partners.map(p => ({ name: p.university.name, country: p.university.country, projects_count: p.projects.length, mou_status: p.mou_status, satisfaction: p.roi.length > 0 ? (p.roi.reduce((sum, r) => sum + Number(r.satisfaction_score), 0) / p.roi.length).toFixed(1) : null }));
-      const { data, error } = await supabase.functions.invoke('partner-advisor', { body: { partners: partnerSummary, university_name: selectedUniversity.name } });
+      const { data, error } = await supabase.functions.invoke('partner-advisor', { body: { partners: partnerSummary, university_name: selectedUniversity.name, language } });
       if (error) throw error;
       if (data?.recommendations) { setAiRecommendations(data.recommendations); setOverallStrategy(data.overall_strategy || ''); }
     } catch (error) { console.error('Error generating AI recommendations:', error); toast({ title: t('common.error'), description: 'Failed to generate AI recommendations', variant: 'destructive' }); } finally { setIsGeneratingAI(false); }

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { University } from '@/types/database';
 
 interface AIRecommendation {
@@ -73,6 +74,7 @@ export function MOUGeneratorDialog({
   onSuccess,
 }: MOUGeneratorDialogProps) {
   const { toast } = useToast();
+  const { language } = useLanguage();
 
   const [step, setStep] = useState<'generating' | 'review' | 'sending' | 'done'>('generating');
   const [cooperationScope, setCooperationScope] = useState<string[]>([
@@ -107,6 +109,7 @@ export function MOUGeneratorDialog({
           initiator_name: selectedUniversity.name,
           partner_name: partnerUniversity.name,
           existing_clauses: [],
+          language,
         },
       });
 
