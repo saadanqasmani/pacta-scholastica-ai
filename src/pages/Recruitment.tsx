@@ -35,7 +35,11 @@ import {
   Calendar,
   Wrench,
   ShieldCheck,
+  School,
+  Flag,
 } from 'lucide-react';
+import { StudentPlacementTab } from '@/components/recruitment/StudentPlacementTab';
+import { NationalityDistributionTab } from '@/components/recruitment/NationalityDistributionTab';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Years available
@@ -91,29 +95,29 @@ const generateCountryDataForYear = (
   opts?: { targetRegisteredTotal?: number; maxCountries?: number }
 ) => {
   const baseCountries = [
-    { name: 'Syria', base: 412 },
-    { name: 'Iran', base: 387 },
-    { name: 'Azerbaijan', base: 356 },
-    { name: 'Turkmenistan', base: 289 },
-    { name: 'Kazakhstan', base: 276 },
-    { name: 'Afghanistan', base: 234 },
-    { name: 'Iraq', base: 223 },
-    { name: 'Pakistan', base: 198 },
-    { name: 'Egypt', base: 187 },
-    { name: 'Jordan', base: 156 },
-    { name: 'Palestine', base: 145 },
-    { name: 'Libya', base: 134 },
-    { name: 'Yemen', base: 123 },
-    { name: 'Somalia', base: 112 },
-    { name: 'Sudan', base: 98 },
-    { name: 'Morocco', base: 87 },
-    { name: 'Tunisia', base: 76 },
-    { name: 'Algeria', base: 72 },
-    { name: 'Nigeria', base: 68 },
-    { name: 'Kenya', base: 64 },
-    { name: 'Ethiopia', base: 58 },
-    { name: 'Tanzania', base: 52 },
-    { name: 'Uganda', base: 48 },
+    { name: 'Turkmenistan', base: 3000 },
+    { name: 'Syria', base: 520 },
+    { name: 'Yemen', base: 340 },
+    { name: 'Iraq', base: 310 },
+    { name: 'Iran', base: 245 },
+    { name: 'Afghanistan', base: 210 },
+    { name: 'Azerbaijan', base: 195 },
+    { name: 'Palestine', base: 175 },
+    { name: 'Somalia', base: 155 },
+    { name: 'Libya', base: 140 },
+    { name: 'Egypt', base: 125 },
+    { name: 'Jordan', base: 110 },
+    { name: 'Pakistan', base: 105 },
+    { name: 'Kazakhstan', base: 95 },
+    { name: 'Sudan', base: 85 },
+    { name: 'Indonesia', base: 72 },
+    { name: 'Uzbekistan', base: 68 },
+    { name: 'Nigeria', base: 62 },
+    { name: 'Morocco', base: 55 },
+    { name: 'Bangladesh', base: 48 },
+    { name: 'Chad', base: 42 },
+    { name: 'Kyrgyzstan', base: 38 },
+    { name: 'Tajikistan', base: 35 },
     { name: 'Ghana', base: 45 },
     { name: 'Cameroon', base: 42 },
     { name: 'Senegal', base: 38 },
@@ -770,9 +774,17 @@ export default function Recruitment() {
       )}
 
       <Tabs defaultValue="countries" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex flex-wrap">
           <TabsTrigger value="countries">{t('recruitment.byCountry')}</TabsTrigger>
           <TabsTrigger value="agencies">{t('recruitment.byAgency')}</TabsTrigger>
+          <TabsTrigger value="placement" className="gap-1">
+            <School className="h-3 w-3" />
+            Student Placement
+          </TabsTrigger>
+          <TabsTrigger value="nationalities" className="gap-1">
+            <Flag className="h-3 w-3" />
+            Nationalities
+          </TabsTrigger>
           <TabsTrigger value="intelligence">{t('recruitment.marketIntelligence')}</TabsTrigger>
         </TabsList>
 
@@ -969,6 +981,14 @@ export default function Recruitment() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="placement">
+          <StudentPlacementTab />
+        </TabsContent>
+
+        <TabsContent value="nationalities">
+          <NationalityDistributionTab />
         </TabsContent>
 
         <TabsContent value="intelligence">
