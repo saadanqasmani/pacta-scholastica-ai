@@ -381,6 +381,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Documentation
     'docs.title': 'Student Documentation Management',
     'docs.subtitle': 'Complete document requirements, country-specific rules, and student tracking',
+    'docs.admissionGuidelines': 'Admission Guidelines',
     'docs.requirementsChecker': 'Requirements Checker',
     'docs.countryRules': 'Country Rules',
     'docs.studentTracking': 'Student Tracking',
@@ -900,6 +901,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Documentation
     'docs.title': 'Öğrenci Belge Yönetimi',
     'docs.subtitle': 'Belge gereksinimleri, ülkeye özel kurallar ve öğrenci takibi',
+    'docs.admissionGuidelines': 'Kabul Yönergesi',
     'docs.requirementsChecker': 'Gereksinim Kontrolü',
     'docs.countryRules': 'Ülke Kuralları',
     'docs.studentTracking': 'Öğrenci Takibi',
