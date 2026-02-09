@@ -38,7 +38,7 @@ export default function MOUManagement() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { selectedUniversity, universities } = useUniversity();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
 
   const partnerId = searchParams.get('partner');
@@ -157,7 +157,7 @@ export default function MOUManagement() {
     setSuggestedClauses([]);
     try {
       const { data, error } = await supabase.functions.invoke('mou-suggest', {
-        body: { cooperation_scope: cooperationScope, initiator_name: selectedUniversity.name, partner_name: partner.name, existing_clauses: clauses },
+        body: { cooperation_scope: cooperationScope, initiator_name: selectedUniversity.name, partner_name: partner.name, existing_clauses: clauses, language },
       });
       if (error) throw error;
       if (data?.clauses) {

@@ -5,18 +5,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "Respond entirely in English. All text fields in the JSON must be in English.",
+  tr: "Tüm yanıtlarını Türkçe olarak ver. JSON içindeki tüm metin alanları Türkçe olmalı.",
+  de: "Antworte vollständig auf Deutsch. Alle Textfelder im JSON müssen auf Deutsch sein.",
+  ar: "أجب بالكامل باللغة العربية. جميع حقول النص في JSON يجب أن تكون بالعربية.",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { country, educationSystem, stage, degreeLevel } = await req.json();
+    const { country, educationSystem, stage, degreeLevel, language } = await req.json();
+    const lang = language || "en";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const langInstruction = LANGUAGE_INSTRUCTIONS[lang] || LANGUAGE_INSTRUCTIONS.en;
 
     const systemPrompt = `You are an expert in international student document requirements for Turkish universities. 
 You have comprehensive knowledge of:
@@ -25,6 +33,8 @@ You have comprehensive knowledge of:
 - Denklik (equivalency) processes
 - İkamet (residence permit) requirements
 - Specific requirements for different exam boards (Cambridge, IB, WAEC, CBSE, etc.)
+
+${langInstruction}
 
 Provide detailed, accurate, and actionable information about required documents.`;
 
@@ -77,18 +87,8 @@ Format your response as a JSON object with this structure:
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -97,7 +97,6 @@ Format your response as a JSON object with this structure:
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
-    // Extract JSON from the response
     let requirements;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -108,24 +107,12 @@ Format your response as a JSON object with this structure:
       }
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
-      // Return a structured error response
-      requirements = {
-        documents: [],
-        commonIssues: [],
-        generalAdvice: content,
-        estimatedTotalTime: "Unknown",
-        parseError: true,
-      };
+      requirements = { documents: [], commonIssues: [], generalAdvice: content, estimatedTotalTime: "Unknown", parseError: true };
     }
 
-    return new Response(JSON.stringify(requirements), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify(requirements), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Document requirements error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

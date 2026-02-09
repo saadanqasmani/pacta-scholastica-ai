@@ -6,15 +6,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "Respond entirely in English. All text fields in the JSON must be in English.",
+  tr: "Tüm yanıtlarını Türkçe olarak ver. JSON içindeki tüm metin alanları Türkçe olmalı.",
+  de: "Antworte vollständig auf Deutsch. Alle Textfelder im JSON müssen auf Deutsch sein.",
+  ar: "أجب بالكامل باللغة العربية. جميع حقول النص في JSON يجب أن تكون بالعربية.",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { university_id, evaluation_type } = await req.json();
+    const { university_id, evaluation_type, language } = await req.json();
+    const lang = language || "en";
 
-    console.log("AI Evaluate request:", { university_id, evaluation_type });
+    console.log("AI Evaluate request:", { university_id, evaluation_type, language: lang });
 
     if (!university_id) {
       throw new Error("university_id is required");
@@ -24,42 +32,14 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch university data
-    const { data: university } = await supabase
-      .from("universities")
-      .select("*")
-      .eq("id", university_id)
-      .single();
+    const { data: university } = await supabase.from("universities").select("*").eq("id", university_id).single();
+    if (!university) throw new Error("University not found");
 
-    if (!university) {
-      throw new Error("University not found");
-    }
+    const { data: faculties } = await supabase.from("faculties").select("*, departments(*)").eq("university_id", university_id);
+    const { data: mobilityData } = await supabase.from("mobility_records").select("*").or(`university_id.eq.${university_id},partner_university_id.eq.${university_id}`);
+    const { data: mous } = await supabase.from("mous").select("*").or(`initiator_university_id.eq.${university_id},partner_university_id.eq.${university_id}`);
+    const { data: allUniversities } = await supabase.from("universities").select("*").neq("id", university_id);
 
-    // Fetch faculties and departments
-    const { data: faculties } = await supabase
-      .from("faculties")
-      .select("*, departments(*)")
-      .eq("university_id", university_id);
-
-    // Fetch mobility data
-    const { data: mobilityData } = await supabase
-      .from("mobility_records")
-      .select("*")
-      .or(`university_id.eq.${university_id},partner_university_id.eq.${university_id}`);
-
-    // Fetch MOUs
-    const { data: mous } = await supabase
-      .from("mous")
-      .select("*")
-      .or(`initiator_university_id.eq.${university_id},partner_university_id.eq.${university_id}`);
-
-    // Fetch all universities for partner recommendations
-    const { data: allUniversities } = await supabase
-      .from("universities")
-      .select("*")
-      .neq("id", university_id);
-
-    // Build context for AI
     const universityContext = `
 UNIVERSITY PROFILE:
 Name: ${university.name}
@@ -87,12 +67,15 @@ AVAILABLE PARTNER UNIVERSITIES:
 ${allUniversities?.slice(0, 20).map(u => `- ${u.name} (${u.country}, ${u.type}, ${u.internationalization_maturity} maturity)`).join("\n") || "None"}
 `;
 
+    const langInstruction = LANGUAGE_INSTRUCTIONS[lang] || LANGUAGE_INSTRUCTIONS.en;
     let systemPrompt = "";
     let userPrompt = "";
 
     switch (evaluation_type) {
       case "health_index":
         systemPrompt = `You are an AI governance analyst for IARSMS. Generate an Institutional Health Index for a university.
+
+${langInstruction}
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
@@ -112,6 +95,8 @@ Base scores on: institution type, size, internationalization maturity, mobility 
 
       case "strengths_weaknesses":
         systemPrompt = `You are an AI governance analyst for IARSMS. Analyze university strengths and weaknesses by department.
+
+${langInstruction}
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
@@ -143,6 +128,8 @@ Include 2-4 strengths and 2-4 weaknesses based on the university profile. Use ac
       case "department_roi":
         systemPrompt = `You are an AI governance analyst for IARSMS. Evaluate department-level ROI for international recruitment.
 
+${langInstruction}
+
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
   "departments": [
@@ -165,6 +152,8 @@ Evaluate ALL departments from the faculty data. Assign realistic scores and cate
 
       case "partner_recommendations":
         systemPrompt = `You are an AI governance analyst for IARSMS. Recommend strategic partner universities.
+
+${langInstruction}
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
@@ -189,6 +178,8 @@ Recommend 5-8 universities from the AVAILABLE PARTNER UNIVERSITIES list. Use EXA
 
       case "market_intelligence":
         systemPrompt = `You are an AI governance analyst for IARSMS. Generate market intelligence for student recruitment.
+
+${langInstruction}
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
@@ -219,11 +210,8 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
         throw new Error(`Unknown evaluation_type: ${evaluation_type}`);
     }
 
-    // Call Lovable AI Gateway
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
+    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -244,16 +232,10 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const errorText = await response.text();
       console.error("AI Gateway error:", errorText);
@@ -262,64 +244,35 @@ Generate data for 8-12 markets relevant to the university's region and profile. 
 
     const aiResponse = await response.json();
     let content = aiResponse.choices?.[0]?.message?.content || "";
-
-    console.log("Raw AI response length:", content.length);
-
-    // Clean up the response - remove markdown code blocks if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-    // Try to fix incomplete JSON by finding the last complete object
     let evaluationData;
     try {
       evaluationData = JSON.parse(content);
     } catch (parseError) {
-      console.log("Initial parse failed, attempting to repair JSON...");
-      
-      // Try to find the last complete closing brace
       let fixedContent = content;
-      
-      // Count braces to find if JSON is incomplete
       const openBraces = (fixedContent.match(/{/g) || []).length;
       const closeBraces = (fixedContent.match(/}/g) || []).length;
       const openBrackets = (fixedContent.match(/\[/g) || []).length;
       const closeBrackets = (fixedContent.match(/]/g) || []).length;
-      
-      // Add missing closing brackets and braces
-      for (let i = 0; i < openBrackets - closeBrackets; i++) {
-        fixedContent += "]";
-      }
-      for (let i = 0; i < openBraces - closeBraces; i++) {
-        fixedContent += "}";
-      }
-      
-      // Try parsing the fixed content
+      for (let i = 0; i < openBrackets - closeBrackets; i++) fixedContent += "]";
+      for (let i = 0; i < openBraces - closeBraces; i++) fixedContent += "}";
       try {
         evaluationData = JSON.parse(fixedContent);
-        console.log("JSON repair successful");
       } catch (e) {
         console.error("Failed to parse AI response after repair:", content.substring(0, 500));
         throw new Error("Failed to parse AI evaluation response");
       }
     }
 
-    // Cache the evaluation
-    const { error: cacheError } = await supabase
-      .from("ai_evaluations")
-      .upsert({
-        university_id,
-        evaluation_type,
-        evaluation_data: evaluationData,
-        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour
-      }, {
-        onConflict: "university_id,evaluation_type",
-        ignoreDuplicates: false,
-      });
+    const { error: cacheError } = await supabase.from("ai_evaluations").upsert({
+      university_id,
+      evaluation_type,
+      evaluation_data: evaluationData,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    }, { onConflict: "university_id,evaluation_type", ignoreDuplicates: false });
 
-    if (cacheError) {
-      console.warn("Failed to cache evaluation:", cacheError);
-    }
-
-    console.log(`AI evaluation generated: ${evaluation_type} for ${university.name}`);
+    if (cacheError) console.warn("Failed to cache evaluation:", cacheError);
 
     return new Response(
       JSON.stringify({ evaluation: evaluationData }),

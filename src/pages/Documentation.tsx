@@ -68,7 +68,7 @@ const COUNTRIES = [
 
 export default function Documentation() {
   const { selectedUniversity } = useUniversity();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   const [activeTab, setActiveTab] = useState('requirements');
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
@@ -105,7 +105,7 @@ export default function Documentation() {
     try {
       const countryName = COUNTRIES.find(c => c.code === selectedCountry)?.name || selectedCountry;
       const educationLabel = EDUCATION_SYSTEMS.find(e => e.value === selectedEducation)?.labelKey ? t(EDUCATION_SYSTEMS.find(e => e.value === selectedEducation)!.labelKey) : selectedEducation;
-      const { data, error } = await supabase.functions.invoke('document-requirements', { body: { country: countryName, educationSystem: educationLabel, stage: selectedStage, degreeLevel: selectedDegree } });
+      const { data, error } = await supabase.functions.invoke('document-requirements', { body: { country: countryName, educationSystem: educationLabel, stage: selectedStage, degreeLevel: selectedDegree, language } });
       if (error) throw error;
       setAiRequirements(data); toast.success('Requirements generated successfully');
     } catch (error) { console.error('Error getting AI requirements:', error); toast.error('Failed to generate requirements'); } finally { setAiLoading(false); }

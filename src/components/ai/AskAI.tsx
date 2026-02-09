@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUniversity } from '@/contexts/UniversityContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
@@ -18,6 +19,7 @@ export function AskAI() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { selectedUniversity } = useUniversity();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,6 +41,7 @@ export function AskAI() {
           message: userMessage,
           university_id: selectedUniversity?.id,
           university_name: selectedUniversity?.name,
+          language,
         },
       });
 
@@ -54,7 +57,9 @@ export function AskAI() {
         ...prev,
         {
           role: 'assistant',
-          content: 'I apologize, but I encountered an error processing your request. Please try again.',
+          content: language === 'tr' 
+            ? 'Üzgünüm, isteğinizi işlerken bir hata oluştu. Lütfen tekrar deneyin.'
+            : 'I apologize, but I encountered an error processing your request. Please try again.',
         },
       ]);
     } finally {
@@ -69,9 +74,24 @@ export function AskAI() {
     }
   };
 
+  const placeholderExamples = language === 'tr' ? {
+    line1: '"Üniversitem neden düşük performans gösteriyor?"',
+    line2: '"Hangi bölümlere müdahale gerekiyor?"',
+    line3: '"Hangi ortaklıklar bize yardımcı olur?"',
+    ask: 'Kurumunuz hakkında bir soru sorun',
+    placeholder: 'Bir soru sorun...',
+    analyzing: 'Analiz ediliyor...',
+  } : {
+    line1: '"Why is my university underperforming?"',
+    line2: '"Which departments need intervention?"',
+    line3: '"Which partnerships would help us?"',
+    ask: 'Ask me anything about your institution',
+    placeholder: 'Ask a question...',
+    analyzing: 'Analyzing...',
+  };
+
   return (
     <>
-      {/* Chat Toggle Button */}
       <Button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg ${isOpen ? 'hidden' : ''}`}
@@ -80,14 +100,12 @@ export function AskAI() {
         <MessageSquare className="h-6 w-6" />
       </Button>
 
-      {/* Chat Panel */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[400px] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-2xl animate-fade-in">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary-foreground" />
-              <span className="font-semibold text-primary-foreground">Ask AI</span>
+              <span className="font-semibold text-primary-foreground">{language === 'tr' ? 'Yapay Zekaya Sor' : 'Ask AI'}</span>
             </div>
             <Button
               variant="ghost"
@@ -99,27 +117,25 @@ export function AskAI() {
             </Button>
           </div>
 
-          {/* Context Indicator */}
           {selectedUniversity && (
             <div className="border-b border-border bg-secondary px-4 py-2">
               <p className="text-xs text-muted-foreground">
-                Context: <span className="font-medium text-foreground">{selectedUniversity.name}</span>
+                {language === 'tr' ? 'Bağlam' : 'Context'}: <span className="font-medium text-foreground">{selectedUniversity.name}</span>
               </p>
             </div>
           )}
 
-          {/* Messages */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
                 <MessageSquare className="mb-3 h-10 w-10 text-muted-foreground/50" />
                 <p className="text-sm font-medium text-muted-foreground">
-                  Ask me anything about your institution
+                  {placeholderExamples.ask}
                 </p>
                 <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                  <p>"Why is my university underperforming?"</p>
-                  <p>"Which departments need intervention?"</p>
-                  <p>"Which partnerships would help us?"</p>
+                  <p>{placeholderExamples.line1}</p>
+                  <p>{placeholderExamples.line2}</p>
+                  <p>{placeholderExamples.line3}</p>
                 </div>
               </div>
             ) : (
@@ -144,7 +160,7 @@ export function AskAI() {
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Analyzing...</span>
+                      <span>{placeholderExamples.analyzing}</span>
                     </div>
                   </div>
                 )}
@@ -152,14 +168,13 @@ export function AskAI() {
             )}
           </ScrollArea>
 
-          {/* Input */}
           <div className="border-t border-border p-4">
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask a question..."
+                placeholder={placeholderExamples.placeholder}
                 disabled={isLoading}
                 className="flex-1"
               />

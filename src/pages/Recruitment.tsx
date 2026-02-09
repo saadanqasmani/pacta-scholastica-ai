@@ -296,7 +296,7 @@ function MarketIntelligenceTab(props: {
   const { isDummy, totals, countryStats, year } = props;
 
   const { selectedUniversity } = useUniversity();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -360,7 +360,7 @@ function MarketIntelligenceTab(props: {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('market-intelligence', {
-        body: { university_id: selectedUniversity.id },
+        body: { university_id: selectedUniversity.id, language },
       });
 
       if (error) throw error;
