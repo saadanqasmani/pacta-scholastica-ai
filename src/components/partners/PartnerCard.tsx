@@ -3,14 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Building2, 
-  ChevronDown, 
-  ChevronUp, 
-  Handshake, 
-  Eye,
-  MapPin 
+  Building2, ChevronDown, ChevronUp, Handshake, Eye, MapPin 
 } from 'lucide-react';
 import { PartnerRecommendation } from '@/types/database';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PartnerCardProps {
   recommendation: PartnerRecommendation;
@@ -20,6 +16,7 @@ interface PartnerCardProps {
 
 export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: PartnerCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { t } = useLanguage();
 
   const getScoreColor = (score: number) => {
     if (score >= 85) return 'text-primary bg-primary/10';
@@ -48,7 +45,6 @@ export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: Pa
           </div>
         </div>
 
-        {/* Expand/Collapse Toggle */}
         <Button
           variant="ghost"
           size="sm"
@@ -58,23 +54,22 @@ export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: Pa
           {isExpanded ? (
             <>
               <ChevronUp className="h-4 w-4 mr-1" />
-              Hide reasoning
+              {t('partners.showLess')}
             </>
           ) : (
             <>
               <ChevronDown className="h-4 w-4 mr-1" />
-              View reasoning
+              {t('partners.showMore')}
             </>
           )}
         </Button>
 
-        {/* Reasoning Details */}
         {isExpanded && (
           <div className="mt-4 space-y-3 animate-fade-in">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  Departmental Complementarity
+                  {t('partners.complementaryAreas')}
                 </p>
                 <p className="text-sm">{recommendation.reasoning.departmental_complementarity}</p>
               </div>
@@ -92,7 +87,7 @@ export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: Pa
               </div>
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  Strategic Alignment
+                  {t('partners.strategicFit')}
                 </p>
                 <p className="text-sm">{recommendation.reasoning.strategic_alignment}</p>
               </div>
@@ -100,28 +95,20 @@ export function PartnerCard({ recommendation, onInitiateMOU, onViewProfile }: Pa
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="mt-4 flex items-center justify-between gap-2">
           <Badge variant="outline" className="text-xs">
-            AI Recommended
+            {t('partners.aiRecommended')}
           </Badge>
           <div className="flex gap-2">
             {onViewProfile && (
-              <Button 
-                size="sm"
-                variant="outline"
-                onClick={() => onViewProfile(recommendation.university_name)}
-              >
+              <Button size="sm" variant="outline" onClick={() => onViewProfile(recommendation.university_name)}>
                 <Eye className="h-4 w-4 mr-1" />
-                Profile
+                {t('partners.viewProfile')}
               </Button>
             )}
-            <Button 
-              size="sm" 
-              onClick={() => onInitiateMOU(recommendation.university_name)}
-            >
+            <Button size="sm" onClick={() => onInitiateMOU(recommendation.university_name)}>
               <Handshake className="h-4 w-4 mr-1" />
-              Initiate MOU
+              {t('partners.initiateMOU')}
             </Button>
           </div>
         </div>
