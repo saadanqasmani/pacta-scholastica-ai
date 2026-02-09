@@ -1,4 +1,5 @@
 import { useUniversity } from '@/contexts/UniversityContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Building2, MapPin, Users, GraduationCap } from 'lucide-react';
@@ -8,11 +9,12 @@ import { DepartmentROICard } from '@/components/profile/DepartmentROICard';
 
 export default function Profile() {
   const { selectedUniversity, isLoading } = useUniversity();
+  const { t } = useLanguage();
 
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -20,7 +22,7 @@ export default function Profile() {
   if (!selectedUniversity) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">Please select a university from the header.</div>
+        <div className="text-muted-foreground">{t('profile.selectUniversity')}</div>
       </div>
     );
   }
@@ -29,10 +31,8 @@ export default function Profile() {
     <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">University Profile</h1>
-        <p className="text-muted-foreground">
-          AI-generated institutional analysis and strategic intelligence
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('profile.title')}</h1>
+        <p className="text-muted-foreground">{t('profile.subtitle')}</p>
       </div>
 
       {/* University Info Card */}
@@ -52,7 +52,7 @@ export default function Profile() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span className="capitalize">{selectedUniversity.size} institution</span>
+                    <span className="capitalize">{selectedUniversity.size} {t('profile.institution')}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <GraduationCap className="h-4 w-4" />
@@ -69,20 +69,15 @@ export default function Profile() {
                 variant={selectedUniversity.internationalization_maturity === 'high' ? 'default' : 'secondary'}
                 className="capitalize"
               >
-                {selectedUniversity.internationalization_maturity} internationalization
+                {selectedUniversity.internationalization_maturity} {t('dashboard.internationalization')}
               </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Health Index */}
       <HealthIndexCard />
-
-      {/* Strengths & Weaknesses */}
       <StrengthsWeaknessesCard />
-
-      {/* Department ROI */}
       <DepartmentROICard />
     </div>
   );

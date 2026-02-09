@@ -1,45 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useUniversity } from '@/contexts/UniversityContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Building2, 
-  Users, 
-  FileText, 
-  Plane, 
-  TrendingUp, 
-  Globe,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  Sparkles,
-  BarChart3,
-  PieChart,
+  Building2, Users, FileText, Plane, TrendingUp, Globe,
+  ArrowUpRight, ArrowDownRight, CheckCircle, Clock, AlertTriangle,
+  Sparkles, BarChart3, PieChart,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  CartesianGrid,
-  Legend,
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
+  PieChart as RechartsPieChart, Pie, Cell, CartesianGrid, Legend,
 } from 'recharts';
 
 interface DashboardStats {
@@ -73,6 +49,7 @@ interface PartnerByRegion {
 
 const Index = () => {
   const { selectedUniversity, isLoading: universityLoading } = useUniversity();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [mobilityByYear, setMobilityByYear] = useState<MobilityByYear[]>([]);
   const [mouByStatus, setMouByStatus] = useState<MOUByStatus[]>([]);
@@ -85,45 +62,35 @@ const Index = () => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        // Fetch MOUs
         const { data: mous } = await supabase
           .from('mous')
           .select('status')
           .or(`initiator_university_id.eq.${selectedUniversity.id},partner_university_id.eq.${selectedUniversity.id}`);
 
-        // Fetch mobility records with partner info
         const { data: mobility } = await supabase
           .from('mobility_records')
           .select('direction, academic_year, student_count, partner_university_id')
           .eq('university_id', selectedUniversity.id);
 
-        // Fetch partner projects
         const { data: projects } = await supabase
           .from('partner_projects')
           .select('status')
           .eq('university_id', selectedUniversity.id);
 
-        // Fetch partner requests
         const { data: requests } = await supabase
           .from('partner_requests')
           .select('status')
           .eq('to_university_id', selectedUniversity.id);
 
-        // Fetch unread messages
         const { data: messages } = await supabase
           .from('partner_messages')
           .select('is_read')
           .eq('to_university_id', selectedUniversity.id)
           .eq('is_read', false);
 
-        // Get unique partner IDs from mobility and MOUs
         const partnerIds = new Set<string>();
         mobility?.forEach(m => partnerIds.add(m.partner_university_id));
-        mous?.forEach(m => {
-          // We don't have direct access to partner IDs here, but signed MOUs count as partnerships
-        });
 
-        // Fetch partner universities for region data
         const uniquePartnerIds = Array.from(partnerIds);
         let partnerRegions: { region: string }[] = [];
         if (uniquePartnerIds.length > 0) {
@@ -134,7 +101,6 @@ const Index = () => {
           partnerRegions = partners || [];
         }
 
-        // Calculate stats
         const signedMOUs = mous?.filter(m => m.status === 'signed').length || 0;
         const pendingMOUs = mous?.filter(m => ['pending_review', 'pending_approval'].includes(m.status)).length || 0;
         const draftMOUs = mous?.filter(m => m.status === 'draft').length || 0;
@@ -154,7 +120,6 @@ const Index = () => {
           unreadMessages: messages?.length || 0,
         });
 
-        // Mobility by year
         const yearMap = new Map<string, { incoming: number; outgoing: number }>();
         mobility?.forEach(m => {
           const current = yearMap.get(m.academic_year) || { incoming: 0, outgoing: 0 };
@@ -170,22 +135,15 @@ const Index = () => {
           .map(([year, data]) => ({ year, ...data }));
         setMobilityByYear(sortedYears);
 
-        // MOU by status
-        const statusCounts = {
-          draft: draftMOUs,
-          pending: pendingMOUs,
-          signed: signedMOUs,
-        };
         setMouByStatus([
-          { name: 'Draft', value: statusCounts.draft, color: 'hsl(var(--muted-foreground))' },
-          { name: 'Pending', value: statusCounts.pending, color: 'hsl(220 70% 50%)' },
-          { name: 'Signed', value: statusCounts.signed, color: 'hsl(var(--primary))' },
+          { name: t('dashboard.draft'), value: draftMOUs, color: 'hsl(var(--muted-foreground))' },
+          { name: t('dashboard.pending'), value: pendingMOUs, color: 'hsl(220 70% 50%)' },
+          { name: t('dashboard.signed'), value: signedMOUs, color: 'hsl(var(--primary))' },
         ]);
 
-        // Partners by region from mobility data
         const regionMap = new Map<string, number>();
         partnerRegions.forEach(p => {
-          const region = p.region || 'Unknown';
+          const region = p.region || t('common.unknown');
           regionMap.set(region, (regionMap.get(region) || 0) + 1);
         });
         setPartnersByRegion(
@@ -207,7 +165,7 @@ const Index = () => {
   if (universityLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -220,15 +178,15 @@ const Index = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground">
-            AI-driven governance intelligence for {selectedUniversity?.name || 'your institution'}
+            {t('dashboard.subtitle')} {selectedUniversity?.name || t('dashboard.yourInstitution')}
           </p>
         </div>
         <Button asChild>
           <Link to="/intelligence">
             <Sparkles className="mr-2 h-4 w-4" />
-            Market Intelligence
+            {t('dashboard.marketIntelligence')}
           </Link>
         </Button>
       </div>
@@ -247,11 +205,11 @@ const Index = () => {
                 <span>•</span>
                 <span className="capitalize">{selectedUniversity.type}</span>
                 <span>•</span>
-                <span className="capitalize">{selectedUniversity.size} institution</span>
+                <span className="capitalize">{selectedUniversity.size} {t('dashboard.institution')}</span>
                 {selectedUniversity.ranking && (
                   <>
                     <span>•</span>
-                    <span>Rank #{selectedUniversity.ranking}</span>
+                    <span>{t('dashboard.rank')} #{selectedUniversity.ranking}</span>
                   </>
                 )}
               </div>
@@ -260,7 +218,7 @@ const Index = () => {
               variant={selectedUniversity.internationalization_maturity === 'high' ? 'default' : 'secondary'}
               className="capitalize"
             >
-              {selectedUniversity.internationalization_maturity} internationalization
+              {selectedUniversity.internationalization_maturity} {t('dashboard.internationalization')}
             </Badge>
           </CardContent>
         </Card>
@@ -271,20 +229,20 @@ const Index = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Partnerships
+              {t('dashboard.activePartnerships')}
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.activePartnerships ?? '—'}</div>
-            <p className="text-xs text-muted-foreground">via signed MOUs</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.viaSigned')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending MOUs
+              {t('dashboard.pendingMOUs')}
             </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -292,17 +250,17 @@ const Index = () => {
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{stats?.pendingMOUs ?? '—'}</span>
               {stats?.draftMOUs ? (
-                <span className="text-sm text-muted-foreground">+ {stats.draftMOUs} drafts</span>
+                <span className="text-sm text-muted-foreground">+ {stats.draftMOUs} {t('dashboard.drafts')}</span>
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">awaiting response</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.awaitingResponse')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Mobility Balance
+              {t('dashboard.mobilityBalance')}
             </CardTitle>
             <Plane className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -315,7 +273,7 @@ const Index = () => {
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.incomingMobility ?? 0} in / {stats?.outgoingMobility ?? 0} out
+              {stats?.incomingMobility ?? 0} {t('dashboard.in')} / {stats?.outgoingMobility ?? 0} {t('dashboard.out')}
             </p>
           </CardContent>
         </Card>
@@ -323,7 +281,7 @@ const Index = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Action Items
+              {t('dashboard.actionItems')}
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -332,7 +290,7 @@ const Index = () => {
               {(stats?.pendingRequests ?? 0) + (stats?.unreadMessages ?? 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.pendingRequests ?? 0} requests, {stats?.unreadMessages ?? 0} messages
+              {stats?.pendingRequests ?? 0} {t('dashboard.requests')}, {stats?.unreadMessages ?? 0} {t('dashboard.messages')}
             </p>
           </CardContent>
         </Card>
@@ -340,21 +298,20 @@ const Index = () => {
 
       {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Mobility Trend */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <BarChart3 className="h-4 w-4" />
-              Mobility Trends
+              {t('dashboard.mobilityTrends')}
             </CardTitle>
-            <CardDescription>Student exchanges by academic year</CardDescription>
+            <CardDescription>{t('dashboard.studentExchangesByYear')}</CardDescription>
           </CardHeader>
           <CardContent>
             {mobilityByYear.length > 0 ? (
               <ChartContainer
                 config={{
-                  incoming: { label: 'Incoming', color: 'hsl(var(--primary))' },
-                  outgoing: { label: 'Outgoing', color: 'hsl(var(--muted-foreground))' },
+                  incoming: { label: t('dashboard.incoming'), color: 'hsl(var(--primary))' },
+                  outgoing: { label: t('dashboard.outgoing'), color: 'hsl(var(--muted-foreground))' },
                 }}
                 className="h-[200px] w-full"
               >
@@ -370,20 +327,19 @@ const Index = () => {
               </ChartContainer>
             ) : (
               <div className="flex h-[200px] items-center justify-center text-muted-foreground">
-                No mobility data available
+                {t('dashboard.noMobilityData')}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* MOU Status Distribution */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <PieChart className="h-4 w-4" />
-              MOU Status
+              {t('dashboard.mouStatus')}
             </CardTitle>
-            <CardDescription>Current agreement distribution</CardDescription>
+            <CardDescription>{t('dashboard.currentAgreementDist')}</CardDescription>
           </CardHeader>
           <CardContent>
             {mouByStatus.some(m => m.value > 0) ? (
@@ -392,12 +348,8 @@ const Index = () => {
                   <RechartsPieChart>
                     <Pie
                       data={mouByStatus.filter(m => m.value > 0)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
+                      cx="50%" cy="50%" innerRadius={40} outerRadius={70}
+                      paddingAngle={2} dataKey="value"
                     >
                       {mouByStatus.filter(m => m.value > 0).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -417,7 +369,7 @@ const Index = () => {
               </div>
             ) : (
               <div className="flex h-[200px] items-center justify-center text-muted-foreground">
-                No MOU data available
+                {t('dashboard.noMOUData')}
               </div>
             )}
           </CardContent>
@@ -426,12 +378,11 @@ const Index = () => {
 
       {/* Quick Insights Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Partners by Region */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Globe className="h-4 w-4" />
-              Partners by Region
+              {t('dashboard.partnersByRegion')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -449,23 +400,22 @@ const Index = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No partner data</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.noPartnerData')}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Projects Overview */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <TrendingUp className="h-4 w-4" />
-              Projects Overview
+              {t('dashboard.projectsOverview')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Projects</span>
+                <span className="text-sm text-muted-foreground">{t('dashboard.totalProjects')}</span>
                 <span className="text-2xl font-bold">{stats?.totalProjects ?? 0}</span>
               </div>
               <div className="space-y-2">
@@ -473,14 +423,14 @@ const Index = () => {
                   to="/partnerships" 
                   className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
                 >
-                  <span className="text-sm">View all projects</span>
+                  <span className="text-sm">{t('dashboard.viewAllProjects')}</span>
                   <ArrowUpRight className="h-4 w-4" />
                 </Link>
                 <Link 
                   to="/mou" 
                   className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
                 >
-                  <span className="text-sm">Manage MOUs</span>
+                  <span className="text-sm">{t('dashboard.manageMOUs')}</span>
                   <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -488,31 +438,30 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4" />
-              Quick Actions
+              {t('dashboard.quickActions')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/partners">
                 <Users className="mr-2 h-4 w-4" />
-                Discover Partners
+                {t('dashboard.discoverPartners')}
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/mobility">
                 <Plane className="mr-2 h-4 w-4" />
-                Track Mobility
+                {t('dashboard.trackMobility')}
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/profile">
                 <Building2 className="mr-2 h-4 w-4" />
-                View Profile
+                {t('dashboard.viewProfile')}
               </Link>
             </Button>
           </CardContent>
@@ -525,19 +474,19 @@ const Index = () => {
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <span>{stats?.signedMOUs ?? 0} Active Agreements</span>
+              <span>{stats?.signedMOUs ?? 0} {t('dashboard.activeAgreements')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-yellow-600" />
-              <span>{stats?.pendingMOUs ?? 0} Pending Review</span>
+              <span>{stats?.pendingMOUs ?? 0} {t('dashboard.pendingReview')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary" />
-              <span>{totalMobility} Total Exchanges</span>
+              <span>{totalMobility} {t('dashboard.totalExchanges')}</span>
             </div>
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              <span>{stats?.totalProjects ?? 0} Active Projects</span>
+              <span>{stats?.totalProjects ?? 0} {t('dashboard.activeProjects')}</span>
             </div>
           </div>
         </CardContent>
