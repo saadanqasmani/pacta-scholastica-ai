@@ -15,8 +15,9 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { SpecialCasesTracking } from '@/components/documentation/SpecialCasesTracking';
+import { AdmissionGuidelines } from '@/components/documentation/AdmissionGuidelines';
 import { 
-  FileText, GraduationCap, Globe, Clock, AlertCircle, Search, Sparkles, FileCheck, Stamp, Info, ChevronRight, Users, Filter, RefreshCw, BookOpen, Briefcase, PauseCircle, PlayCircle, ArrowLeftRight, Building2, ShieldAlert
+  FileText, GraduationCap, Globe, Clock, AlertCircle, Search, Sparkles, FileCheck, Stamp, Info, ChevronRight, Users, Filter, RefreshCw, BookOpen, Briefcase, PauseCircle, PlayCircle, ArrowLeftRight, Building2, ShieldAlert, Scale
 } from 'lucide-react';
 
 interface DocumentTemplate { id: string; stage_type: string; document_name: string; document_category: string; description: string | null; is_required: boolean; sort_order: number; }
@@ -70,7 +71,7 @@ export default function Documentation() {
   const { selectedUniversity } = useUniversity();
   const { t, language } = useLanguage();
   
-  const [activeTab, setActiveTab] = useState('requirements');
+  const [activeTab, setActiveTab] = useState('admission-guidelines');
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [countryRules, setCountryRules] = useState<CountryRule[]>([]);
   const [studentDocuments, setStudentDocuments] = useState<StudentDocument[]>([]);
@@ -129,12 +130,17 @@ export default function Documentation() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-4">
+        <TabsList className="grid w-full max-w-4xl grid-cols-5">
+          <TabsTrigger value="admission-guidelines" className="flex items-center gap-2"><Scale className="h-4 w-4" />{t('docs.admissionGuidelines')}</TabsTrigger>
           <TabsTrigger value="requirements" className="flex items-center gap-2"><FileCheck className="h-4 w-4" />{t('docs.requirementsChecker')}</TabsTrigger>
           <TabsTrigger value="country-rules" className="flex items-center gap-2"><Globe className="h-4 w-4" />{t('docs.countryRules')}</TabsTrigger>
           <TabsTrigger value="tracking" className="flex items-center gap-2"><Users className="h-4 w-4" />{t('docs.studentTracking')}</TabsTrigger>
           <TabsTrigger value="special-cases" className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" />{t('docs.specialCases')}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="admission-guidelines" className="space-y-6">
+          <AdmissionGuidelines />
+        </TabsContent>
 
         <TabsContent value="requirements" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-3">
