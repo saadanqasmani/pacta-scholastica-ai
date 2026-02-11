@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.parse-transcript]
 verify_jwt = false
+
+[functions.partnership-analysis]
+verify_jwt = false

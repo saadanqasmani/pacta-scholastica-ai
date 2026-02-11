@@ -783,6 +783,111 @@ export type Database = {
           },
         ]
       }
+      partnership_interactions: {
+        Row: {
+          ai_achievability_score: number | null
+          ai_analysis: string | null
+          contact_person_email: string | null
+          contact_person_name: string | null
+          contact_person_title: string | null
+          created_at: string
+          description: string | null
+          discussion_notes: string | null
+          duration_minutes: number | null
+          follow_up_date: string | null
+          goals: string | null
+          id: string
+          interaction_type: string
+          location: string | null
+          meeting_date: string | null
+          meeting_format: string | null
+          next_steps: string | null
+          outcomes: string | null
+          partner_university_id: string
+          priority: string | null
+          resources_needed: string | null
+          stage: string
+          status: string | null
+          title: string
+          university_id: string
+          updated_at: string
+          waiting_for: string | null
+        }
+        Insert: {
+          ai_achievability_score?: number | null
+          ai_analysis?: string | null
+          contact_person_email?: string | null
+          contact_person_name?: string | null
+          contact_person_title?: string | null
+          created_at?: string
+          description?: string | null
+          discussion_notes?: string | null
+          duration_minutes?: number | null
+          follow_up_date?: string | null
+          goals?: string | null
+          id?: string
+          interaction_type?: string
+          location?: string | null
+          meeting_date?: string | null
+          meeting_format?: string | null
+          next_steps?: string | null
+          outcomes?: string | null
+          partner_university_id: string
+          priority?: string | null
+          resources_needed?: string | null
+          stage?: string
+          status?: string | null
+          title: string
+          university_id: string
+          updated_at?: string
+          waiting_for?: string | null
+        }
+        Update: {
+          ai_achievability_score?: number | null
+          ai_analysis?: string | null
+          contact_person_email?: string | null
+          contact_person_name?: string | null
+          contact_person_title?: string | null
+          created_at?: string
+          description?: string | null
+          discussion_notes?: string | null
+          duration_minutes?: number | null
+          follow_up_date?: string | null
+          goals?: string | null
+          id?: string
+          interaction_type?: string
+          location?: string | null
+          meeting_date?: string | null
+          meeting_format?: string | null
+          next_steps?: string | null
+          outcomes?: string | null
+          partner_university_id?: string
+          priority?: string | null
+          resources_needed?: string | null
+          stage?: string
+          status?: string | null
+          title?: string
+          university_id?: string
+          updated_at?: string
+          waiting_for?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_interactions_partner_university_id_fkey"
+            columns: ["partner_university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnership_interactions_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
