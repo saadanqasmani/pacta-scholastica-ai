@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { FileText, Building2, ArrowLeftRight, Sparkles, Loader2, Save, Plus, RefreshCw, CheckCircle, Globe, Search, Trash2, MoreHorizontal } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { FileText, Building2, ArrowLeftRight, Sparkles, Loader2, Save, Plus, RefreshCw, CheckCircle, Globe, Search, Trash2, MoreHorizontal, Handshake, Send, Edit } from 'lucide-react';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,13 +59,46 @@ export default function MOUManagement() {
   const [clauses, setClauses] = useState<MOUClause[]>([]);
   const [status, setStatus] = useState<MOU['status']>('draft');
 
+  // For scope change request
+  const [scopeChangeDialog, setScopeChangeDialog] = useState(false);
+  const [requestedScopes, setRequestedScopes] = useState<string[]>([]);
+  const [scopeChangeMessage, setScopeChangeMessage] = useState('');
+  const [isSendingScopeChange, setIsSendingScopeChange] = useState(false);
+
+  // For partner selector grouping
+  const [existingPartnerIds, setExistingPartnerIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (partnerId) {
       const foundPartner = universities.find(u => u.id === partnerId);
       if (foundPartner) setPartner(foundPartner);
     }
     loadOrCreateMOU();
+    loadExistingPartners();
   }, [partnerId, mouId, universities, selectedUniversity?.id]);
+
+  const loadExistingPartners = async () => {
+    if (!selectedUniversity) return;
+    try {
+      // Get partners from MOUs, projects, and interactions
+      const [mousRes, projectsRes, interactionsRes] = await Promise.all([
+        supabase.from('mous').select('initiator_university_id, partner_university_id').or(`initiator_university_id.eq.${selectedUniversity.id},partner_university_id.eq.${selectedUniversity.id}`),
+        supabase.from('partner_projects').select('partner_university_id').eq('university_id', selectedUniversity.id),
+        supabase.from('partnership_interactions').select('partner_university_id').eq('university_id', selectedUniversity.id),
+      ]);
+
+      const ids = new Set<string>();
+      (mousRes.data || []).forEach((m: any) => {
+        if (m.initiator_university_id === selectedUniversity.id) ids.add(m.partner_university_id);
+        else ids.add(m.initiator_university_id);
+      });
+      (projectsRes.data || []).forEach((p: any) => ids.add(p.partner_university_id));
+      (interactionsRes.data || []).forEach((i: any) => ids.add(i.partner_university_id));
+      setExistingPartnerIds(ids);
+    } catch (err) {
+      console.error('Error loading existing partners:', err);
+    }
+  };
 
   const loadOrCreateMOU = async () => {
     if (!selectedUniversity) return;
@@ -179,8 +214,70 @@ export default function MOUManagement() {
     toast({ title: t('common.success'), description: `Clause "${suggestion.title}" added` });
   };
 
+  const handleScopeChangeRequest = async () => {
+    if (!selectedUniversity || !partner || !mou) return;
+    setIsSendingScopeChange(true);
+    try {
+      // Determine what changed
+      const added = requestedScopes.filter(s => !cooperationScope.includes(s));
+      const removed = cooperationScope.filter(s => !requestedScopes.includes(s));
+      const scopeLabels = (ids: string[]) => ids.map(id => {
+        const scope = COOPERATION_SCOPES.find(s => s.id === id);
+        return scope ? t(scope.labelKey) : id;
+      }).join(', ');
+
+      let changeDescription = '';
+      if (added.length > 0) changeDescription += `Add: ${scopeLabels(added)}. `;
+      if (removed.length > 0) changeDescription += `Remove: ${scopeLabels(removed)}. `;
+
+      // Send as a partner request
+      const { error } = await supabase.from('partner_requests').insert({
+        from_university_id: selectedUniversity.id,
+        to_university_id: partner.id,
+        request_type: 'scope_change',
+        subject: `MOU Scope Change Request`,
+        message: `${changeDescription}\n\n${scopeChangeMessage}`,
+        priority: 'high',
+      });
+      if (error) throw error;
+
+      // Also send a message
+      await supabase.from('partner_messages').insert({
+        from_university_id: selectedUniversity.id,
+        to_university_id: partner.id,
+        subject: 'MOU Cooperation Scope Change Request',
+        message: `We would like to propose changes to our MOU cooperation scope:\n\n${changeDescription}\n\n${scopeChangeMessage}`,
+        message_type: 'scope_change',
+      });
+
+      // Log in MOU history
+      await supabase.from('mou_history').insert({
+        mou_id: mou.id,
+        actor_university_id: selectedUniversity.id,
+        action: 'scope_change_requested',
+        changes: { current_scope: cooperationScope, requested_scope: requestedScopes, added, removed },
+      });
+
+      toast({ title: 'Scope Change Requested', description: 'Your request has been sent to the partner university for approval.' });
+      setScopeChangeDialog(false);
+      setScopeChangeMessage('');
+    } catch (error) {
+      console.error('Error sending scope change request:', error);
+      toast({ title: t('common.error'), description: 'Failed to send scope change request', variant: 'destructive' });
+    } finally {
+      setIsSendingScopeChange(false);
+    }
+  };
+
+  const openScopeChangeDialog = () => {
+    setRequestedScopes([...cooperationScope]);
+    setScopeChangeMessage('');
+    setScopeChangeDialog(true);
+  };
+
   const isInitiator = mou ? mou.initiator_university_id === selectedUniversity?.id : true;
   const isEditable = status === 'draft' || (status === 'counter_proposed' && isInitiator) || (status === 'revised' && !isInitiator);
+  const isSigned = status === 'accepted';
 
   if (isLoading) {
     return (
@@ -190,7 +287,9 @@ export default function MOUManagement() {
     );
   }
 
-  const availablePartners = universities.filter(u => u.id !== selectedUniversity?.id);
+  // Separate universities into existing partners and new
+  const existingPartners = universities.filter(u => u.id !== selectedUniversity?.id && existingPartnerIds.has(u.id));
+  const newUniversities = universities.filter(u => u.id !== selectedUniversity?.id && !existingPartnerIds.has(u.id));
 
   if (!partner) {
     return (
@@ -213,10 +312,40 @@ export default function MOUManagement() {
               }
             }}>
               <SelectTrigger className="w-full max-w-md"><SelectValue placeholder={t('mou.selectPartnerPlaceholder')} /></SelectTrigger>
-              <SelectContent className="bg-background border shadow-lg z-50 max-h-[300px]">
-                {availablePartners.map((uni) => (
-                  <SelectItem key={uni.id} value={uni.id}><div className="flex items-center gap-2"><span>{uni.name}</span><span className="text-muted-foreground text-xs">({uni.country})</span></div></SelectItem>
-                ))}
+              <SelectContent className="bg-background border shadow-lg z-50 max-h-[400px]">
+                {existingPartners.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="flex items-center gap-2 text-primary">
+                      <Handshake className="h-3 w-3" />
+                      Existing Partners
+                    </SelectLabel>
+                    {existingPartners.map((uni) => (
+                      <SelectItem key={uni.id} value={uni.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{uni.name}</span>
+                          <span className="text-muted-foreground text-xs">({uni.country})</span>
+                          <Badge variant="outline" className="text-xs ml-1">Partner</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {newUniversities.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="flex items-center gap-2 text-muted-foreground">
+                      <Building2 className="h-3 w-3" />
+                      New Universities
+                    </SelectLabel>
+                    {newUniversities.map((uni) => (
+                      <SelectItem key={uni.id} value={uni.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{uni.name}</span>
+                          <span className="text-muted-foreground text-xs">({uni.country})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
               </SelectContent>
             </Select>
             <div className="text-sm text-muted-foreground">
@@ -224,7 +353,7 @@ export default function MOUManagement() {
             </div>
           </CardContent>
         </Card>
-        <ExistingMOUsList universityId={selectedUniversity?.id} universities={universities} onSelectMOU={(mouId) => navigate(`/mou?mou=${mouId}`)} />
+        <ExistingMOUsList universityId={selectedUniversity?.id} universities={universities} onSelectMOU={(mouId) => navigate(`/mou?mou=${mouId}`)} existingPartnerIds={existingPartnerIds} />
       </div>
     );
   }
@@ -246,7 +375,11 @@ export default function MOUManagement() {
               <ArrowLeftRight className="h-5 w-5 text-muted-foreground" />
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary"><Building2 className="h-6 w-6 text-muted-foreground" /></div>
-                <div><p className="text-sm text-muted-foreground">{t('mou.partner')}</p><p className="font-semibold">{partner.name}</p></div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t('mou.partner')}</p>
+                  <p className="font-semibold">{partner.name}</p>
+                  {existingPartnerIds.has(partner.id) && <Badge variant="outline" className="text-xs mt-1">Existing Partner</Badge>}
+                </div>
               </div>
             </div>
             <StatusWorkflow currentStatus={status} onStatusChange={handleStatusChange} isInitiator={isInitiator} disabled={!mou?.id} />
@@ -255,9 +388,37 @@ export default function MOUManagement() {
           <StatusTimeline currentStatus={status} />
         </CardContent>
       </Card>
+
+      {/* Cooperation Scope */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">{t('mou.cooperationScope')}</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">{t('mou.cooperationScope')}</CardTitle>
+            {isSigned && mou && (
+              <Button variant="outline" size="sm" onClick={openScopeChangeDialog}>
+                <Edit className="h-4 w-4 mr-1" />
+                Request Scope Change
+              </Button>
+            )}
+          </div>
+        </CardHeader>
         <CardContent>
+          {/* Show current scope as badges when MOU is signed */}
+          {isSigned && cooperationScope.length > 0 && (
+            <div className="mb-4 p-3 rounded-lg bg-muted/50 border">
+              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Current Cooperation Scope</p>
+              <div className="flex flex-wrap gap-2">
+                {cooperationScope.map(scopeId => {
+                  const scope = COOPERATION_SCOPES.find(s => s.id === scopeId);
+                  return scope ? (
+                    <Badge key={scopeId} variant="default" className="text-xs">
+                      {t(scope.labelKey)}
+                    </Badge>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {COOPERATION_SCOPES.map((scope) => (
               <div key={scope.id} className="flex items-center space-x-2">
@@ -268,6 +429,8 @@ export default function MOUManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* AI Suggestions */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -297,13 +460,17 @@ export default function MOUManagement() {
           ) : isGeneratingClauses ? <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : <p className="text-sm text-muted-foreground">Click "{t('mou.generateSuggestions')}" to get AI recommendations</p>}
         </CardContent>
       </Card>
+
       <ClauseEditor clauses={clauses} onClausesChange={setClauses} isEditable={isEditable} currentUniversityId={selectedUniversity?.id} />
+
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate('/partners')}>{t('common.cancel')}</Button>
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}{t('mou.save')}
         </Button>
       </div>
+
+      {/* Confirm Status Dialog */}
       <AlertDialog open={confirmDialog?.open} onOpenChange={() => setConfirmDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -316,11 +483,57 @@ export default function MOUManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Scope Change Request Dialog */}
+      <Dialog open={scopeChangeDialog} onOpenChange={setScopeChangeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5" />Request Cooperation Scope Change</DialogTitle>
+            <DialogDescription>Select the desired scope changes. A request will be sent to {partner.name} for their approval.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {COOPERATION_SCOPES.map((scope) => {
+                const isCurrentlyActive = cooperationScope.includes(scope.id);
+                const isRequested = requestedScopes.includes(scope.id);
+                const changed = isCurrentlyActive !== isRequested;
+                return (
+                  <div key={scope.id} className={`flex items-center space-x-2 p-2 rounded-md ${changed ? 'bg-primary/5 border border-primary/20' : ''}`}>
+                    <Checkbox id={`req-${scope.id}`} checked={isRequested} onCheckedChange={(checked) => {
+                      if (checked) setRequestedScopes([...requestedScopes, scope.id]);
+                      else setRequestedScopes(requestedScopes.filter(s => s !== scope.id));
+                    }} />
+                    <label htmlFor={`req-${scope.id}`} className="text-sm font-medium leading-none flex items-center gap-1">
+                      {t(scope.labelKey)}
+                      {changed && (
+                        <Badge variant="outline" className="text-xs ml-1">
+                          {isRequested ? '+ Add' : '− Remove'}
+                        </Badge>
+                      )}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Message (optional)</label>
+              <Textarea value={scopeChangeMessage} onChange={e => setScopeChangeMessage(e.target.value)} placeholder="Explain the reason for the scope change..." rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScopeChangeDialog(false)}>Cancel</Button>
+            <Button onClick={handleScopeChangeRequest} disabled={isSendingScopeChange || JSON.stringify([...requestedScopes].sort()) === JSON.stringify([...cooperationScope].sort())}>
+              {isSendingScopeChange ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function ExistingMOUsList({ universityId, universities, onSelectMOU }: { universityId?: string; universities: University[]; onSelectMOU: (mouId: string) => void; }) {
+function ExistingMOUsList({ universityId, universities, onSelectMOU, existingPartnerIds }: { universityId?: string; universities: University[]; onSelectMOU: (mouId: string) => void; existingPartnerIds: Set<string> }) {
   const [mous, setMous] = useState<MOU[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -346,18 +559,15 @@ function ExistingMOUsList({ universityId, universities, onSelectMOU }: { univers
     fetchMOUs();
   }, [universityId]);
 
-  const getPartnerName = (mou: MOU) => {
+  const getPartnerInfo = (mou: MOU) => {
     const partnerId = mou.initiator_university_id === universityId ? mou.partner_university_id : mou.initiator_university_id;
-    return universities.find(u => u.id === partnerId)?.name || 'Unknown Partner';
-  };
-
-  const getPartnerCountry = (mou: MOU) => {
-    const partnerId = mou.initiator_university_id === universityId ? mou.partner_university_id : mou.initiator_university_id;
-    return universities.find(u => u.id === partnerId)?.country || '';
+    const uni = universities.find(u => u.id === partnerId);
+    return { name: uni?.name || 'Unknown Partner', country: uni?.country || '', id: partnerId };
   };
 
   const filteredMous = mous.filter(mou => {
-    const matchesSearch = searchQuery === '' || getPartnerName(mou).toLowerCase().includes(searchQuery.toLowerCase()) || getPartnerCountry(mou).toLowerCase().includes(searchQuery.toLowerCase());
+    const partner = getPartnerInfo(mou);
+    const matchesSearch = searchQuery === '' || partner.name.toLowerCase().includes(searchQuery.toLowerCase()) || partner.country.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || mou.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -397,6 +607,11 @@ function ExistingMOUsList({ universityId, universities, onSelectMOU }: { univers
     } catch (error) { console.error('Error deleting MOUs:', error); toast({ title: t('mou.error'), variant: 'destructive' }); } finally { setIsBulkUpdating(false); }
   };
 
+  const getScopeLabel = (scopeId: string) => {
+    const scope = COOPERATION_SCOPES.find(s => s.id === scopeId);
+    return scope ? t(scope.labelKey) : scopeId;
+  };
+
   if (isLoading) return <Card><CardContent className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></CardContent></Card>;
   if (mous.length === 0) return null;
 
@@ -405,7 +620,7 @@ function ExistingMOUsList({ universityId, universities, onSelectMOU }: { univers
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{t('mou.existingMOUs')}<Badge variant="outline" className="ml-2">{mous.length}</Badge></CardTitle>
-          <CardDescription>View and manage existing MOUs</CardDescription>
+          <CardDescription>View and manage existing MOUs with cooperation scope details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {selectedMouIds.length > 0 && (
@@ -431,19 +646,41 @@ function ExistingMOUsList({ universityId, universities, onSelectMOU }: { univers
             </Select>
           </div>
           <div className="space-y-2">
-            {filteredMous.length > 0 ? filteredMous.map((mou) => (
-              <div key={mou.id} className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${selectedMouIds.includes(mou.id) ? 'bg-primary/5 border-primary/30' : ''}`} onClick={() => onSelectMOU(mou.id)}>
-                <div className="flex items-center gap-3">
-                  <Checkbox checked={selectedMouIds.includes(mou.id)} onCheckedChange={() => {}} onClick={(e) => toggleSelectMou(mou.id, e)} />
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <div><p className="font-medium">{getPartnerName(mou)}</p><p className="text-xs text-muted-foreground">{getPartnerCountry(mou)}</p></div>
+            {filteredMous.length > 0 ? filteredMous.map((mou) => {
+              const partnerInfo = getPartnerInfo(mou);
+              const isExistingPartner = existingPartnerIds.has(partnerInfo.id);
+              return (
+                <div key={mou.id} className={`flex flex-col p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${selectedMouIds.includes(mou.id) ? 'bg-primary/5 border-primary/30' : ''}`} onClick={() => onSelectMOU(mou.id)}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Checkbox checked={selectedMouIds.includes(mou.id)} onCheckedChange={() => {}} onClick={(e) => toggleSelectMou(mou.id, e)} />
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{partnerInfo.name}</p>
+                          {isExistingPartner && <Badge variant="outline" className="text-xs"><Handshake className="h-3 w-3 mr-1" />Partner</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{partnerInfo.country}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={['accepted'].includes(mou.status) ? 'default' : 'secondary'} className="capitalize">{mou.status.replace('_', ' ')}</Badge>
+                      <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
+                    </div>
+                  </div>
+                  {/* Cooperation Scope badges */}
+                  {mou.cooperation_scope && mou.cooperation_scope.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 ml-10">
+                      {mou.cooperation_scope.map(scopeId => (
+                        <Badge key={scopeId} variant="secondary" className="text-xs">
+                          {getScopeLabel(scopeId)}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={['accepted'].includes(mou.status) ? 'default' : 'secondary'} className="capitalize">{mou.status.replace('_', ' ')}</Badge>
-                  <CheckCircle className={`h-4 w-4 ${mou.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground/30'}`} />
-                </div>
-              </div>
-            )) : <div className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2 opacity-50" /><p>{t('mou.noExistingMOUs')}</p></div>}
+              );
+            }) : <div className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2 opacity-50" /><p>{t('mou.noExistingMOUs')}</p></div>}
           </div>
         </CardContent>
       </Card>
