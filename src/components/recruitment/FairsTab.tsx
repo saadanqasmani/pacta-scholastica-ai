@@ -83,7 +83,7 @@ const fairsData: StaffFeedback[] = [
     fairName: 'EDIS KSA Education Fair',
     agency: 'United Education',
     dates: '8–9 Mar 2025',
-    leadsGenerated: 234,
+    leadsGenerated: 84,
     feedback: 'KSA is the largest untapped market in the region. Vision 2030 is driving Saudi families to look beyond traditional UK/US destinations. Turkish universities are seen as affordable alternatives with good quality. However, the Saudi market is demanding — they expect premium services, English-medium instruction, and NCAAA-compatible accreditation. Dental Medicine and Pharmacy were the most sought-after programs. Many Saudi students are self-funded and price-sensitive but willing to pay for quality English programs.',
     keyInsights: [
       'Vision 2030 creating massive outbound student mobility wave',
@@ -107,10 +107,10 @@ const fairsData: StaffFeedback[] = [
     fairName: 'CUEF Nigeria Education Fair',
     agency: 'CheckUni (CUEF)',
     dates: '18–19 Jan 2025',
-    leadsGenerated: 312,
+    leadsGenerated: 67,
     feedback: 'Nigeria is a volume market with enormous potential. Lagos alone has more than enough demand to fill programs. The key challenge is visa processing and payment infrastructure — many families want to pay but face forex restrictions. Students are highly motivated and English-proficient. Engineering and IT programs had the strongest pull. Many students were comparing us against Cyprus, Hungary, and Poland. Our pricing was competitive but the Turkish visa process was seen as a major friction point.',
     keyInsights: [
-      'Volume market — 312 leads from one 2-day fair, highest lead count',
+      'Volume market — 67 leads from one 2-day fair',
       'English proficiency is high — language of instruction in English is expected',
       'Visa processing is the #1 conversion blocker, not price or quality',
       'Engineering, IT, and Nursing programs are most demanded',
