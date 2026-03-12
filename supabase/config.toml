@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.partnership-analysis]
 verify_jwt = false
+
+[functions.special-case-analyze]
+verify_jwt = false
