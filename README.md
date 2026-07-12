@@ -1,3 +1,20 @@
+# IRIS — International Relations Intelligent System
+
+AI-driven governance, intelligence, and partnership platform for international
+academic relations.
+
+## Desktop app (Electron)
+
+IRIS ships as a standalone Windows desktop app built with Electron. The web
+codebase is wrapped without modification — see [electron/README.md](electron/README.md)
+for architecture details.
+
+```sh
+npm i
+npm run electron:dev        # develop with hot reload
+npm run electron:build:win  # package portable .exe + installer (run on Windows)
+```
+
 # Welcome to your Lovable project
 
 ## Project info
