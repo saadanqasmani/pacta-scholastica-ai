@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calculator, Gauge, History, Trash2, FlaskConical, ArrowRight, Building2 } from 'lucide-react';
+import { Calculator, Gauge, History, Trash2, FlaskConical, ArrowRight, Building2, TrendingDown, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { db, newId } from '@/lib/localdb';
@@ -19,6 +19,8 @@ import {
   INSTITUTION_A_EXAMPLE,
   Band,
 } from '@/lib/imgIpi';
+import { forecastInterventions } from '@/lib/imgIpiForecast';
+import { generateAssessmentReport } from '@/lib/assessmentReport';
 
 const DEFAULT_INPUTS: IMGIPIInputs = {
   item1_daysToCandidates: 30,
@@ -471,6 +473,26 @@ export default function Diagnostics() {
         <TabsContent value="results" className="space-y-4">
           {result && (
             <>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    try {
+                      generateAssessmentReport({
+                        universityName: selectedUniversity?.name ?? 'Institution',
+                        inputs,
+                        result,
+                        assessedAt: new Date().toISOString(),
+                      });
+                      toast.success('Assessment report downloaded as PDF.');
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'PDF generation failed');
+                    }
+                  }}
+                >
+                  <FileDown className="h-4 w-4 mr-1" /> Export report (PDF)
+                </Button>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader className="pb-2">
@@ -582,6 +604,71 @@ export default function Diagnostics() {
                   ))}
                 </CardContent>
               </Card>
+
+              {(() => {
+                const forecast = forecastInterventions(inputs);
+                if (forecast.entries.length === 0) return null;
+                return (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingDown className="h-5 w-5 text-primary" /> Intervention forecast
+                      </CardTitle>
+                      <CardDescription>
+                        Each scenario re-computes the Section 2.7 equations with that single intervention
+                        applied — deterministic framework mathematics, not an AI estimate.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {forecast.entries.slice(0, 6).map((e) => (
+                        <div
+                          key={e.intervention.id}
+                          className="flex items-center justify-between gap-4 border rounded-lg p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{e.intervention.title}</p>
+                            <p className="text-xs text-muted-foreground">{e.intervention.irisModule}</p>
+                          </div>
+                          <div className="text-right shrink-0 text-sm">
+                            <div>
+                              IMG {result.img.toFixed(3)} → <span className="font-mono font-semibold">{e.img.toFixed(3)}</span>{' '}
+                              <span className="text-green-700 text-xs font-mono">({e.imgDelta.toFixed(3)})</span>
+                              {e.bandChange && (
+                                <Badge variant="outline" className={`ml-2 ${bandColor(e.imgBand)}`}>
+                                  → {e.imgBand}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              IPI {result.ipi.toFixed(3)} → <span className="font-mono">{e.ipi.toFixed(3)}</span>{' '}
+                              <span className="text-green-700 font-mono">(+{e.ipiDelta.toFixed(3)})</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {forecast.combined && (
+                        <div className="flex items-center justify-between gap-4 border-2 border-primary rounded-lg p-3 bg-primary/5">
+                          <p className="text-sm font-semibold">All interventions combined</p>
+                          <div className="text-right text-sm">
+                            <div>
+                              IMG → <span className="font-mono font-semibold">{forecast.combined.img.toFixed(3)}</span>{' '}
+                              <Badge variant="outline" className={bandColor(forecast.combined.imgBand)}>
+                                {forecast.combined.imgBand}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              IPI → <span className="font-mono font-semibold">{forecast.combined.ipi.toFixed(3)}</span>{' '}
+                              <Badge variant="outline" className={ipiBandColor(forecast.combined.ipiBand)}>
+                                {forecast.combined.ipiBand}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </>
           )}
         </TabsContent>

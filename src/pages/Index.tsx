@@ -102,8 +102,10 @@ const Index = () => {
           partnerRegions = partners || [];
         }
 
-        const signedMOUs = mous?.filter(m => m.status === 'signed').length || 0;
-        const pendingMOUs = mous?.filter(m => ['pending_review', 'pending_approval'].includes(m.status)).length || 0;
+        // Status values follow the MOU schema: accepted = signed/active,
+        // pending/revised/counter_proposed = awaiting a response.
+        const signedMOUs = mous?.filter(m => m.status === 'accepted').length || 0;
+        const pendingMOUs = mous?.filter(m => ['pending', 'revised', 'counter_proposed'].includes(m.status)).length || 0;
         const draftMOUs = mous?.filter(m => m.status === 'draft').length || 0;
 
         const incomingMobility = mobility?.filter(m => m.direction === 'incoming').reduce((sum, m) => sum + m.student_count, 0) || 0;

@@ -92,7 +92,26 @@ export function ensureSeeded(): Promise<void> {
       if (count === 0) {
         await db.universities.bulkAdd(TURKISH_UNIVERSITIES as unknown as Record<string, unknown>[]);
       }
+      // International partner network (added after the Turkish registry
+      // shipped, so also top up existing installations).
+      const intlExisting = await db.universities.get('int-tum');
+      if (!intlExisting) {
+        const { INTERNATIONAL_UNIVERSITIES } = await import('@/data/internationalUniversities');
+        await db.universities.bulkPut(
+          INTERNATIONAL_UNIVERSITIES as unknown as (Record<string, unknown> & { id: string })[]
+        );
+      }
+      // Demo operational dataset — idempotent, fills only empty tables
+      // (dynamic import avoids a circular module dependency).
+      const { ensureDemoData } = await import('@/data/demoSeed');
+      await ensureDemoData();
     })();
+    // Surface seeding failures instead of silently caching a rejection.
+    seedPromise = seedPromise.catch((e) => {
+      console.error('[IRIS] Seeding failed:', e);
+      seedPromise = null;
+      throw e;
+    });
   }
   return seedPromise;
 }

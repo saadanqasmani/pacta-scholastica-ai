@@ -11,7 +11,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, profile, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
+  // Wait for BOTH the session and the profile: the profile loads a moment
+  // after the session on a fresh page load, and redirecting before it
+  // arrives would bounce valid deep links to /register-university.
+  if (isLoading || (user && !profile)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

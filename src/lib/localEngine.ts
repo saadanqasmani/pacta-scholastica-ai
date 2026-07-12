@@ -338,9 +338,20 @@ async function evalPartnerRecommendations(d: UniData): Promise<Row> {
       const newCountry = !partnerCountries.has(String(u.country));
       const abroad = String(u.country) !== myCountry;
       const maturity = maturityScore(u.internationalization_maturity) / 100; // 0..1
+      // IMG/IPI conditioning: a diagnosed IA gap rewards high-maturity partners
+      // (they reduce discovery blindness); a diagnosed DID gap rewards partners
+      // with strong digital infrastructure (proxied by maturity); a diagnosed
+      // WF gap rewards Erasmus+ partners whose processes are pre-standardized.
+      let gapBonus = 0;
+      const gaps = d.assessment?.result.gaps ?? [];
+      for (const g of gaps) {
+        if (g.dimension === 'IA') gapBonus += g.severity * maturity * 8;
+        if (g.dimension === 'DID') gapBonus += g.severity * maturity * 6;
+        if (g.dimension === 'WF' && u.educational_union === 'Erasmus+') gapBonus += g.severity * 4;
+      }
       const score = clamp(
-        40 + overlap * 30 + (newCountry ? 10 : 0) + (abroad ? 5 : 0) + maturity * 15,
-        40,
+        38 + overlap * 30 + (newCountry ? 10 : 0) + (abroad ? 5 : 0) + maturity * 12 + gapBonus,
+        38,
         98
       );
       return { u, shared, score, newCountry, abroad };
@@ -362,7 +373,9 @@ async function evalPartnerRecommendations(d: UniData): Promise<Row> {
           ? `${u.country} is not yet represented in your partnership portfolio, adding genuine geographic reach.`
           : `You already have partners in ${u.country}; this match deepens an existing corridor rather than widening it.`,
         mobility_balance: `A ${u.size} ${u.type} institution with ${u.internationalization_maturity} internationalization maturity — realistic capacity for two-way student exchange.`,
-        strategic_alignment: `Match score ${score}/100 computed by the IRIS engine from research-strength overlap, portfolio diversification and institutional maturity.`,
+        strategic_alignment: d.assessment
+          ? `Match score ${score}/100, conditioned on your latest IMG/IPI assessment (IMG ${d.assessment.result.img.toFixed(3)}, ${d.assessment.result.imgBand} gap): candidates that help close your diagnosed ${d.assessment.result.gaps.map((g) => g.dimension).join('/') || 'remaining'} gaps are weighted upward.`
+          : `Match score ${score}/100 computed by the IRIS engine from research-strength overlap, portfolio diversification and institutional maturity. Run an IMG/IPI assessment to condition recommendations on your diagnosed gaps.`,
       },
     })),
   };
