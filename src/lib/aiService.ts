@@ -25,7 +25,7 @@ export interface AIConfig {
 const CONFIG_KEY = 'iris-ai-config';
 
 const DEFAULT_MODELS: Record<Exclude<AIProvider, 'none'>, string> = {
-  gemini: 'gemini-2.0-flash',
+  gemini: 'gemini-2.5-flash',
   openai: 'gpt-4o-mini',
 };
 
@@ -40,7 +40,13 @@ export function getAIConfig(): AIConfig {
         return {
           provider,
           apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
-          model: typeof parsed.model === 'string' ? parsed.model : '',
+          // Google removed free-tier quota for gemini-2.0-flash; migrate old default.
+          model:
+            typeof parsed.model === 'string'
+              ? parsed.model === 'gemini-2.0-flash'
+                ? 'gemini-2.5-flash'
+                : parsed.model
+              : '',
         };
       }
     }
@@ -187,7 +193,18 @@ export async function testAIConnection(cfg: AIConfig): Promise<{ ok: boolean; me
     });
     return { ok: true, message: `Connected to ${cfg.provider} (${resolveModel(cfg)}).` };
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Connection failed.' };
+    let message = err instanceof Error ? err.message : 'Connection failed.';
+    if (/429|quota|rate.?limit/i.test(message)) {
+      message =
+        `The provider rejected the request for quota reasons (429). ` +
+        (cfg.provider === 'gemini'
+          ? `Your Google account has no free-tier quota for the model "${resolveModel(cfg)}". ` +
+            `Try the model "gemini-2.5-flash" or "gemini-2.5-flash-lite" (both have a free tier), ` +
+            `or wait a minute and test again. `
+          : `Check your plan and billing on the provider's dashboard. `) +
+        `Meanwhile IRIS keeps working with its built-in offline engine.`;
+    }
+    return { ok: false, message };
   }
 }
 

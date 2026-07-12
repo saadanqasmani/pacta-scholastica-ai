@@ -12,7 +12,7 @@ import { getAIConfig, saveAIConfig, testAIConnection, AIConfig, AIProvider } fro
 const PROVIDER_INFO: Record<Exclude<AIProvider, 'none'>, { label: string; defaultModel: string; keyHint: string; keyUrl: string }> = {
   gemini: {
     label: 'Google Gemini',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: 'gemini-2.5-flash',
     keyHint: 'Free API key from Google AI Studio',
     keyUrl: 'https://aistudio.google.com/apikey',
   },
@@ -43,8 +43,8 @@ export default function Settings() {
     saveAIConfig(config);
     toast.success(
       config.provider === 'none'
-        ? 'AI disabled. IRIS continues to work fully offline.'
-        : `AI connected: ${PROVIDER_INFO[config.provider].label}.`
+        ? 'Using the IRIS built-in engine — all AI features work offline.'
+        : `Cloud AI connected: ${PROVIDER_INFO[config.provider].label}. IRIS falls back to the built-in engine when offline.`
     );
   };
 
@@ -74,20 +74,21 @@ export default function Settings() {
       <Card className="border-l-4 border-l-primary">
         <CardContent className="py-3 flex items-center gap-2 text-sm">
           <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-          IRIS works completely offline. Everything below is optional: connecting an AI provider only adds
-          extra intelligence to features like partner recommendations and MOU clause suggestions when you
-          have internet.
+          IRIS has its own built-in analysis engine: every AI feature (Ask AI, health analysis, partner
+          recommendations, MOU suggestions) works completely offline using your local data. Connecting a
+          cloud provider below is optional — it upgrades the answers when you have internet, and IRIS
+          automatically falls back to the built-in engine whenever the cloud is unavailable.
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" /> AI assistant (optional)
+            <Sparkles className="h-5 w-5" /> AI assistant
           </CardTitle>
           <CardDescription>
-            Link ChatGPT or Google Gemini with your own API key. The key is stored only on this computer.
-            Gemini offers a free tier — recommended if you don't want to pay.
+            Optionally link ChatGPT or Google Gemini with your own API key. The key is stored only on this
+            computer. Gemini offers a free tier — recommended if you don't want to pay.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -100,7 +101,7 @@ export default function Settings() {
               <SelectContent>
                 <SelectItem value="none">
                   <span className="flex items-center gap-2">
-                    <WifiOff className="h-4 w-4" /> None — fully offline (default)
+                    <WifiOff className="h-4 w-4" /> IRIS built-in engine — offline (default)
                   </span>
                 </SelectItem>
                 <SelectItem value="gemini">Google Gemini (free tier available)</SelectItem>
