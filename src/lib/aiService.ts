@@ -1081,22 +1081,30 @@ export async function invokeLocalFunction(
   body: Record<string, unknown>
 ): Promise<{ data: unknown; error: { message: string } | null }> {
   const cfg = getAIConfig();
+  const cloudConfigured =
+    cfg.provider !== 'none' &&
+    !!cfg.apiKey &&
+    (typeof navigator === 'undefined' || navigator.onLine);
 
-  if (
-    cfg.provider === 'none' ||
-    !cfg.apiKey ||
-    (typeof navigator !== 'undefined' && !navigator.onLine)
-  ) {
-    return { data: null, error: { message: NOT_CONFIGURED_MESSAGE } };
+  // Cloud AI first when the user linked a provider and is online…
+  if (cloudConfigured) {
+    const handler = HANDLERS[name];
+    if (handler) {
+      try {
+        const data = await handler(cfg, body || {});
+        return { data, error: null };
+      } catch (err) {
+        // …but never fail the feature: fall through to the built-in engine
+        // (quota errors, network hiccups, model changes, parse failures).
+        console.warn(`[IRIS] Cloud AI failed for "${name}", using built-in engine:`, err);
+      }
+    }
   }
 
-  const handler = HANDLERS[name];
-  if (!handler) {
-    return { data: null, error: { message: `Unknown AI function: ${name}` } };
-  }
-
+  // IRIS built-in engine: fully offline, computes from local data.
   try {
-    const data = await handler(cfg, body || {});
+    const { runLocalEngine } = await import('@/lib/localEngine');
+    const data = await runLocalEngine(name, body || {});
     return { data, error: null };
   } catch (err) {
     return {
