@@ -30,11 +30,16 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
 
         const typedData = (data || []) as University[];
         setUniversities(typedData);
-        
-        // Always default to İstanbul Nişantaşı Üniversitesi as the primary institution
+
+        // Restore the last university the user was viewing (developer master
+        // control: any university can be selected from the header and the
+        // choice survives restarts). Falls back to İstanbul Nişantaşı
+        // Üniversitesi as the primary institution.
         const NISANTASI_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
+        const savedId = localStorage.getItem('iris-selected-university');
+        const saved = savedId ? typedData.find(u => u.id === savedId) : undefined;
         const nisantasi = typedData.find(u => u.id === NISANTASI_ID);
-        setSelectedUniversity(nisantasi || typedData[0] || null);
+        setSelectedUniversity(saved || nisantasi || typedData[0] || null);
       } catch (error) {
         console.error('Error fetching universities:', error);
       } finally {
@@ -45,8 +50,14 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
     fetchUniversities();
   }, [profile?.university_id]);
 
+  const selectAndRemember = (university: University | null) => {
+    setSelectedUniversity(university);
+    if (university) localStorage.setItem('iris-selected-university', university.id);
+    else localStorage.removeItem('iris-selected-university');
+  };
+
   return (
-    <UniversityContext.Provider value={{ selectedUniversity, setSelectedUniversity, universities, isLoading }}>
+    <UniversityContext.Provider value={{ selectedUniversity, setSelectedUniversity: selectAndRemember, universities, isLoading }}>
       {children}
     </UniversityContext.Provider>
   );

@@ -21,8 +21,9 @@ export function Header() {
   const { selectedUniversity, setSelectedUniversity, universities, isLoading } = useUniversity();
   const { t } = useLanguage();
 
-  const turkishUniversities = universities.filter(u => u.country === 'Türkiye');
-  const internationalUniversities = universities.filter(u => u.country !== 'Türkiye');
+  const isTurkish = (c: string) => c === 'Turkey' || c === 'Türkiye';
+  const turkishUniversities = universities.filter(u => isTurkish(u.country));
+  const internationalUniversities = universities.filter(u => !isTurkish(u.country));
 
   const handleLogout = async () => {
     await signOut();
