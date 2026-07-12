@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ImgIpiCard } from '@/components/dashboard/ImgIpiCard';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
   PieChart as RechartsPieChart, Pie, Cell, CartesianGrid, Legend,
@@ -298,6 +299,7 @@ const Index = () => {
 
       {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <ImgIpiCard />
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">

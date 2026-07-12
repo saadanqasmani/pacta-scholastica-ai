@@ -19,6 +19,10 @@ import Documentation from "./pages/Documentation";
 import PartnerAnalytics from "./pages/PartnerAnalytics";
 import Auth from "./pages/Auth";
 import RegisterUniversity from "./pages/RegisterUniversity";
+import Diagnostics from "./pages/Diagnostics";
+import DataLibrary from "./pages/DataLibrary";
+import AddUniversity from "./pages/AddUniversity";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +48,10 @@ const App = () => (
                 <Route path="/recruitment" element={<ProtectedRoute><MainLayout><Recruitment /></MainLayout></ProtectedRoute>} />
                 <Route path="/partner-analytics" element={<ProtectedRoute><MainLayout><PartnerAnalytics /></MainLayout></ProtectedRoute>} />
                 <Route path="/documentation" element={<ProtectedRoute><MainLayout><Documentation /></MainLayout></ProtectedRoute>} />
+                <Route path="/diagnostics" element={<ProtectedRoute><MainLayout><Diagnostics /></MainLayout></ProtectedRoute>} />
+                <Route path="/library" element={<ProtectedRoute><MainLayout><DataLibrary /></MainLayout></ProtectedRoute>} />
+                <Route path="/add-university" element={<ProtectedRoute><MainLayout><AddUniversity /></MainLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </UniversityProvider>

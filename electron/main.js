@@ -147,3 +147,4 @@ if (!gotSingleInstanceLock) {
     if (process.platform !== "darwin") app.quit();
   });
 }
+

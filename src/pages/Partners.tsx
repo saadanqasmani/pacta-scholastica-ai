@@ -91,9 +91,15 @@ export default function Partners() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{t('partners.title')}</h1>
-        <p className="text-muted-foreground">{t('partners.subtitle')}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight">{t('partners.title')}</h1>
+          <p className="text-muted-foreground">{t('partners.subtitle')}</p>
+        </div>
+        <Button onClick={() => navigate('/add-university')}>
+          <Building2 className="h-4 w-4 mr-2" />
+          Add University
+        </Button>
       </div>
 
       {selectedUniversity && (

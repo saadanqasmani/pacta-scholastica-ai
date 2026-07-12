@@ -33,6 +33,9 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.intelligence': 'Intelligence',
     'nav.partnerAnalytics': 'Analytics',
     'nav.documentation': 'Documentation',
+    'nav.diagnostics': 'IMG/IPI Diagnostics',
+    'nav.library': 'Data Library',
+    'nav.settings': 'Settings',
     
     // Dashboard
     'dashboard.title': 'Dashboard',
@@ -553,6 +556,9 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.intelligence': 'Pazar Analizi',
     'nav.partnerAnalytics': 'Analitik',
     'nav.documentation': 'Belge Yönetimi',
+    'nav.diagnostics': 'IMG/IPI Tanılama',
+    'nav.library': 'Veri Kütüphanesi',
+    'nav.settings': 'Ayarlar',
     
     // Dashboard
     'dashboard.title': 'Gösterge Paneli',

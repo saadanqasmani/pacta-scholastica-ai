@@ -9,6 +9,9 @@ import {
   TrendingUp,
   FolderOpen,
   BarChart3,
+  Gauge,
+  Library,
+  Settings,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -28,6 +31,9 @@ const navItems: NavItem[] = [
   { to: '/mou', labelKey: 'mou.title', icon: FileText },
   { to: '/recruitment', labelKey: 'recruitment.title', icon: TrendingUp },
   { to: '/documentation', labelKey: 'nav.documentation', icon: FolderOpen },
+  { to: '/diagnostics', labelKey: 'nav.diagnostics', icon: Gauge },
+  { to: '/library', labelKey: 'nav.library', icon: Library },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export function Navigation() {
