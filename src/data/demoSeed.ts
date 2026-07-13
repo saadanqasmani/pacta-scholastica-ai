@@ -14,6 +14,7 @@
 import { db, newId } from '@/lib/localdb';
 import { computeIMGIPI, IMGIPIInputs } from '@/lib/imgIpi';
 import { chunkText } from '@/lib/libraryIndex';
+import { LITERATURE_LIBRARY } from '@/data/literatureLibrary';
 
 export const HOME_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
 
@@ -761,6 +762,36 @@ async function seedUniversityBriefs(): Promise<void> {
   await db.library_chunks.bulkPut(chunkRows as { id: string }[]);
 }
 
+/** Curated open-access literature on internationalization of higher education
+ *  and international office practice, ingested into the Data Library — so
+ *  library search and Ask IRIS can answer questions from the scholarly and
+ *  policy record, not just institutional data. */
+async function seedLiterature(): Promise<void> {
+  const rows: Record<string, unknown>[] = [];
+  const chunkRows: Record<string, unknown>[] = [];
+  const now = iso(2026, 7, 1);
+
+  for (const entry of LITERATURE_LIBRARY) {
+    const text = `${entry.title} (${entry.authors}, ${entry.year}). ${entry.source}. ${entry.access}. ${entry.summary}${entry.url ? ' Available at: ' + entry.url : ''}`;
+    const docId = `lit-${entry.id}`;
+    const chunks = chunkText(text);
+    rows.push({
+      id: docId,
+      title: `${entry.title} (${entry.authors}, ${entry.year})`,
+      filename: `${entry.id}.md`,
+      filetype: 'MD',
+      size: text.length,
+      university_id: null,
+      chunk_count: chunks.length,
+      created_at: now,
+    });
+    chunks.forEach((t, seq) => chunkRows.push({ id: `${docId}-${seq}`, document_id: docId, seq, text: t }));
+  }
+
+  await db.library_documents.bulkPut(rows as { id: string }[]);
+  await db.library_chunks.bulkPut(chunkRows as { id: string }[]);
+}
+
 /** Idempotent entry point — fills only what is missing, never user data. */
 export async function ensureDemoData(): Promise<void> {
   if ((await db.mous.count()) === 0) {
@@ -793,6 +824,19 @@ export async function ensureDemoData(): Promise<void> {
       university_id: 'system',
       evaluation_type: 'seed-marker',
       evaluation_data: { version: 3 },
+      created_at: new Date().toISOString(),
+      expires_at: '2099-01-01T00:00:00Z',
+    });
+  }
+  // v4: curated open-access literature knowledge base in the Data Library.
+  const marker4 = await db.ai_evaluations.get('iris-demo-seed-v4');
+  if (!marker4) {
+    await seedLiterature();
+    await db.ai_evaluations.put({
+      id: 'iris-demo-seed-v4',
+      university_id: 'system',
+      evaluation_type: 'seed-marker',
+      evaluation_data: { version: 4 },
       created_at: new Date().toISOString(),
       expires_at: '2099-01-01T00:00:00Z',
     });

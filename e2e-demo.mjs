@@ -127,7 +127,7 @@ const docCount = await page.evaluate(() => new Promise((resolve) => {
   req.onsuccess = () => { const tx = req.result.transaction('library_documents');
     tx.objectStore('library_documents').count().onsuccess = (e) => resolve(e.target.result); };
 }));
-check('library-preloaded', docCount >= 82, `(docs=${docCount}, expect 3 handbooks + 79 briefs)`);
+check('library-preloaded', docCount >= 140, `(docs=${docCount}, expect handbooks + briefs + 63 literature)`);
 
 // Add University via the real form
 await page.goto(base + '/add-university', { waitUntil: 'networkidle' });
