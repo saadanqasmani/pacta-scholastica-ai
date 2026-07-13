@@ -686,6 +686,81 @@ Residence permits: after arrival, students must apply for a student residence pe
   }
 }
 
+
+/** A knowledge brief for EVERY university, generated from its structured
+ *  data and baseline assessment, ingested into the Data Library — so
+ *  library search and Ask IRIS can answer questions about any institution. */
+async function seedUniversityBriefs(): Promise<void> {
+  const unis = (await db.universities.toArray()) as Record<string, unknown>[];
+  const assessments = (await db.img_ipi_assessments.toArray()) as Record<string, unknown>[];
+  const mous = (await db.mous.toArray()) as Record<string, unknown>[];
+  const latestFor = new Map<string, Record<string, unknown>>();
+  for (const a of assessments) {
+    const uid = String(a.university_id);
+    const prev = latestFor.get(uid);
+    if (!prev || String(a.created_at) > String(prev.created_at)) latestFor.set(uid, a);
+  }
+  const nameOf = new Map(unis.map((u) => [String(u.id), String(u.name)]));
+
+  const rows: Record<string, unknown>[] = [];
+  const chunkRows: Record<string, unknown>[] = [];
+  const now = iso(2026, 6, 25);
+
+  for (const u of unis) {
+    const uid = String(u.id);
+    const partners = mous
+      .filter(
+        (m) =>
+          m.status === 'accepted' &&
+          (m.initiator_university_id === uid || m.partner_university_id === uid)
+      )
+      .map((m) =>
+        nameOf.get(
+          String(m.initiator_university_id === uid ? m.partner_university_id : m.initiator_university_id)
+        )
+      )
+      .filter(Boolean);
+    const a = latestFor.get(uid) as { result?: { img: number; imgBand: string; ipi: number; ipiBand: string; profile: { title: string }; gaps: { dimension: string; irisModule: string }[] } } | undefined;
+    const strengths = Array.isArray(u.research_strengths) ? (u.research_strengths as string[]) : [];
+
+    const text = [
+      `${u.name} — institutional knowledge brief.`,
+      `${u.name} is a ${u.type} university located in ${u.country} (${u.region} region)${u.founded_year ? `, founded in ${u.founded_year}` : ''}. It is a ${u.size}-size institution with ${u.internationalization_maturity} internationalization maturity${u.website ? `. Official website: ${u.website}` : ''}.`,
+      strengths.length
+        ? `Research and academic strengths: ${strengths.join(', ')}. These fields are the institution's primary anchors for joint programmes, co-supervised research and academic exchange.`
+        : `No research strengths are recorded for this institution yet.`,
+      partners.length
+        ? `Active partnership network: ${partners.length} signed agreement${partners.length === 1 ? '' : 's'}, including ${partners.slice(0, 6).join(', ')}${partners.length > 6 ? ' and others' : ''}. Cooperation typically covers student exchange, faculty mobility and joint research.`
+        : `The institution currently has no signed partnership agreements recorded in the network.`,
+      a?.result
+        ? `Internationalization diagnostics: the latest IMG/IPI assessment measured IMG ${a.result.img.toFixed(3)} (${a.result.imgBand} gap) and IPI ${a.result.ipi.toFixed(3)} (${a.result.ipiBand} potential). Institutional profile: ${a.result.profile.title}. ${a.result.gaps.length ? `Priority gaps: ${a.result.gaps.map((g) => g.dimension).join(', ')} — addressable through ${a.result.gaps[0].irisModule}.` : 'No significant gaps diagnosed.'}`
+        : `No IMG/IPI assessment is on file for this institution.`,
+      u.educational_union === 'Erasmus+'
+        ? `The institution participates in Erasmus+, which provides the standard framework for funded mobility and inter-institutional agreements.`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const docId = `demo-brief-${uid}`;
+    const chunks = chunkText(text);
+    rows.push({
+      id: docId,
+      title: `${u.name} — Institutional Brief`,
+      filename: `${uid}-brief.md`,
+      filetype: 'MD',
+      size: text.length,
+      university_id: uid,
+      chunk_count: chunks.length,
+      created_at: now,
+    });
+    chunks.forEach((t, seq) => chunkRows.push({ id: `${docId}-${seq}`, document_id: docId, seq, text: t }));
+  }
+
+  await db.library_documents.bulkPut(rows as { id: string }[]);
+  await db.library_chunks.bulkPut(chunkRows as { id: string }[]);
+}
+
 /** Idempotent entry point — fills only what is missing, never user data. */
 export async function ensureDemoData(): Promise<void> {
   if ((await db.mous.count()) === 0) {
@@ -705,6 +780,19 @@ export async function ensureDemoData(): Promise<void> {
       university_id: 'system',
       evaluation_type: 'seed-marker',
       evaluation_data: { version: 2 },
+      created_at: new Date().toISOString(),
+      expires_at: '2099-01-01T00:00:00Z',
+    });
+  }
+  // v3: per-university knowledge briefs in the Data Library.
+  const marker3 = await db.ai_evaluations.get('iris-demo-seed-v3');
+  if (!marker3) {
+    await seedUniversityBriefs();
+    await db.ai_evaluations.put({
+      id: 'iris-demo-seed-v3',
+      university_id: 'system',
+      evaluation_type: 'seed-marker',
+      evaluation_data: { version: 3 },
       created_at: new Date().toISOString(),
       expires_at: '2099-01-01T00:00:00Z',
     });

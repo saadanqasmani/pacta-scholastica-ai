@@ -119,6 +119,109 @@ const partBody = await page.textContent('body');
 check('partners-page', /Partner Discovery/.test(partBody));
 check('recommendations-appear', /AI-recommended partners/i.test(partBody) && /Initiate MOU/.test(partBody));
 
+// ---- Entry creation, persistence and diagnosis (full-section sweep) --------
+
+// Library pre-loaded with handbooks + per-university briefs
+const docCount = await page.evaluate(() => new Promise((resolve) => {
+  const req = indexedDB.open('iris-local-db');
+  req.onsuccess = () => { const tx = req.result.transaction('library_documents');
+    tx.objectStore('library_documents').count().onsuccess = (e) => resolve(e.target.result); };
+}));
+check('library-preloaded', docCount >= 82, `(docs=${docCount}, expect 3 handbooks + 79 briefs)`);
+
+// Add University via the real form
+await page.goto(base + '/add-university', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+await page.fill('input[placeholder*="Example University"]', 'E2E Test University');
+await page.getByRole('button', { name: /add university/i }).click();
+await page.waitForTimeout(2000);
+const uniAdded = await page.evaluate(() => new Promise((resolve) => {
+  const req = indexedDB.open('iris-local-db');
+  req.onsuccess = () => { const tx = req.result.transaction('universities');
+    tx.objectStore('universities').getAll().onsuccess = (e) =>
+      resolve(e.target.result.some((u) => u.name === 'E2E Test University')); };
+}));
+check('add-university-persists', uniAdded === true);
+
+// Run a diagnosis through the UI (worked example -> calculate -> saved)
+await page.goto(base + '/diagnostics', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: /load worked example/i }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: /calculate img/i }).click();
+await page.waitForTimeout(1500);
+const resBody2 = await page.textContent('body');
+check('diagnosis-runs', /0\.689/.test(resBody2), '(Institution A IMG)');
+await page.getByRole('tab', { name: /history/i }).click();
+await page.waitForTimeout(600);
+check('diagnosis-saved', /History \(2\)/.test(await page.textContent('body')));
+
+// Upload a document to the Data Library through the real file input
+await page.goto(base + '/library', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+await page.getByRole('tab', { name: /documents/i }).click();
+await page.waitForTimeout(600);
+await page.setInputFiles('input[type="file"]', {
+  name: 'e2e-note.txt', mimeType: 'text/plain',
+  buffer: Buffer.from('The E2E verification codeword is zephyr-42. Nomination deadline for the test partner is 1 December.'),
+});
+await page.waitForTimeout(2000);
+await page.getByRole('tab', { name: /ask the library/i }).click();
+await page.fill('input[placeholder*="e.g."]', 'what is the verification codeword?');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(1500);
+check('library-upload-searchable', /zephyr-42/.test(await page.textContent('body')));
+
+// Everything persists across a full reload
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+await page.waitForTimeout(2500);
+const persist = await page.evaluate(() => new Promise((resolve) => {
+  const req = indexedDB.open('iris-local-db');
+  req.onsuccess = () => {
+    const db = req.result; const out = {};
+    const tx = db.transaction(['universities', 'img_ipi_assessments', 'library_documents']);
+    tx.objectStore('universities').count().onsuccess = (e) => (out.u = e.target.result);
+    tx.objectStore('img_ipi_assessments').count().onsuccess = (e) => (out.a = e.target.result);
+    tx.objectStore('library_documents').count().onsuccess = (e) => (out.d = e.target.result);
+    tx.oncomplete = () => resolve(out);
+  };
+}));
+check('persistence-after-reload', persist.u >= 80 && persist.a >= 80 && persist.d >= 83, JSON.stringify(persist));
+check('agenda-card-renders', /Automated agenda/.test(await page.textContent('body')));
+
+// RBAC: a SECOND account must be university-scoped (no switcher)
+await page.evaluate(() => localStorage.removeItem('iris-auth-session'));
+await page.goto(base + '/auth', { waitUntil: 'networkidle' });
+await page.getByRole('tab', { name: /sign ?up/i }).click();
+await page.fill('#signup-name', 'University User');
+await page.fill('#signup-email', 'uni@warsaw.local');
+await page.fill('#signup-password', 'demo12345');
+await page.fill('#signup-confirm', 'demo12345');
+await page.click('[role="tabpanel"][data-state="active"] button[type="submit"]');
+await page.waitForURL('**/register-university', { timeout: 15000 });
+await page.evaluate(async () => new Promise((resolve) => {
+  const req = indexedDB.open('iris-local-db');
+  req.onsuccess = () => {
+    const tx = req.result.transaction('profiles', 'readwrite'); const st = tx.objectStore('profiles');
+    st.getAll().onsuccess = (e) => {
+      const rows = e.target.result;
+      const me = rows.find((r) => r.email === 'uni@warsaw.local');
+      me.university_id = 'int-warsaw';
+      st.put(me).onsuccess = () => resolve();
+    };
+  };
+}));
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+await page.waitForTimeout(2500);
+const rbac = await page.evaluate(() => {
+  const btns = [...document.querySelectorAll('header button')];
+  return {
+    hasSwitcher: btns.some((b) => b.textContent.includes('Viewing as')),
+    shows: document.querySelector('header')?.innerText.includes('Warsaw'),
+  };
+});
+check('rbac-university-locked', rbac.hasSwitcher === false && rbac.shows === true, JSON.stringify(rbac));
+
 console.log(fails.length === 0 ? 'ALL_PASS' : 'FAILURES: ' + fails.join(', '));
 await browser.close();
 process.exit(fails.length === 0 ? 0 : 1);

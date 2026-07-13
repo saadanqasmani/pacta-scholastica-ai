@@ -29,6 +29,14 @@ contextBridge.exposeInMainWorld("iris", {
     },
   },
 
+  /** Meeting Radar — work mailbox (IMAP) scanning. See electron/mail.mjs. */
+  mail: {
+    getConfig: () => ipcRenderer.invoke("iris:mail:get-config"),
+    saveConfig: (cfg) => ipcRenderer.invoke("iris:mail:save-config", cfg),
+    test: (cfg) => ipcRenderer.invoke("iris:mail:test", cfg),
+    scan: () => ipcRenderer.invoke("iris:mail:scan"),
+  },
+
   // Future capability namespaces — handlers are registered in
   // electron/main.js as the corresponding migration steps land:
   //

@@ -43,6 +43,7 @@ export class IrisDB extends Dexie {
   library_documents!: Table<Record<string, unknown>, string>;
   library_chunks!: Table<Record<string, unknown>, string>;
   img_ipi_assessments!: Table<Record<string, unknown>, string>;
+  meeting_leads!: Table<Record<string, unknown>, string>;
 
   constructor() {
     super('iris-local-db');
@@ -76,6 +77,10 @@ export class IrisDB extends Dexie {
       library_documents: 'id, university_id, title, created_at',
       library_chunks: 'id, document_id',
       img_ipi_assessments: 'id, university_id, created_at',
+    });
+    // v2 — Meeting Radar: leads found by scanning the connected work mailbox.
+    this.version(2).stores({
+      meeting_leads: 'id, university_id, email_date, status',
     });
   }
 }

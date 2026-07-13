@@ -356,6 +356,9 @@ const localAuth = {
     }
     const id = newId();
     const fullName = (opts.options?.data?.full_name as string) ?? null;
+    // First account on an installation gets master control (full network
+    // view); every later signup is a university-scoped account.
+    const isFirstAccount = (await db.auth_users.count()) === 0;
     await db.auth_users.add({
       id,
       email,
@@ -369,7 +372,7 @@ const localAuth = {
       email,
       full_name: fullName,
       phone: null,
-      role: 'admin',
+      role: isFirstAccount ? 'master' : 'university',
       university_id: null,
     });
     const session: LocalSession = {

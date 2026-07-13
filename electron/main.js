@@ -109,6 +109,7 @@ function createMainWindow() {
 // --- IPC handlers -----------------------------------------------------------
 // Channels consumed by electron/preload.cjs. Registered namespaces:
 //   iris:ai:*      → local LLM (llama.cpp via node-llama-cpp, see llm.mjs)
+//   iris:mail:*    → Meeting Radar mailbox scanning (IMAP, see mail.mjs)
 // Reserved for later migration steps:
 //   iris:db:*      → local SQLite storage (replaces Supabase)
 //   iris:vault:*   → Knowledge Vault document ingestion / retrieval
@@ -177,6 +178,59 @@ ipcMain.handle("iris:ai:generate", async (_event, payload) => {
   try {
     const llm = await getLLM();
     return await llm.generate(payload || {});
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+// --- iris:mail:* — Meeting Radar mailbox (IMAP via imapflow, see mail.mjs) --
+// Same lazy-import pattern as iris:ai:* — a broken dependency can never
+// block app boot; every channel reports { error } instead of crashing.
+
+let mailModulePromise = null;
+async function getMail() {
+  if (!mailModulePromise) {
+    mailModulePromise = import("./mail.mjs").then((m) => m.getMailManager());
+    mailModulePromise.catch(() => {
+      // Allow a retry on the next call instead of caching the failure forever.
+      mailModulePromise = null;
+    });
+  }
+  return mailModulePromise;
+}
+
+ipcMain.handle("iris:mail:get-config", async () => {
+  try {
+    const mail = await getMail();
+    // Password never crosses the bridge — only hasPassword.
+    return mail.getConfig();
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:mail:save-config", async (_event, cfg) => {
+  try {
+    const mail = await getMail();
+    return mail.saveConfig(cfg || {});
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:mail:test", async (_event, cfg) => {
+  try {
+    const mail = await getMail();
+    return await mail.testConnection(cfg || {});
+  } catch (err) {
+    return { ok: false, message: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:mail:scan", async (_event, cfg) => {
+  try {
+    const mail = await getMail();
+    return await mail.scan(cfg || {});
   } catch (err) {
     return { error: err?.message ? String(err.message) : String(err) };
   }

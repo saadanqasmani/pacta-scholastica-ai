@@ -18,7 +18,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
-  const { selectedUniversity, setSelectedUniversity, universities, isLoading } = useUniversity();
+  const { selectedUniversity, setSelectedUniversity, universities, isLoading, isMaster } = useUniversity();
   const { t } = useLanguage();
 
   const isTurkish = (c: string) => c === 'Turkey' || c === 'Türkiye';
@@ -45,7 +45,15 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* University Selector */}
+          {/* University Selector — master accounts only */}
+          {!isMaster ? (
+            <div className="flex min-w-[280px] items-center justify-between rounded-md border px-3 py-2 text-sm">
+              <span className="flex items-center gap-2 truncate">
+                <span className="text-xs text-muted-foreground">{t('header.viewingAs')}</span>
+                <span className="font-medium truncate">{selectedUniversity?.name ?? '—'}</span>
+              </span>
+            </div>
+          ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="min-w-[280px] justify-between" disabled={isLoading}>
@@ -100,6 +108,7 @@ export function Header() {
               </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
 
           {/* Language Switcher */}
           <LanguageSwitcher />
