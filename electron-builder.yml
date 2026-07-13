@@ -1,0 +1,43 @@
+appId: app.iris.desktop
+productName: IRIS
+copyright: © 2026 IRIS — International Relations Intelligent System
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+# Primary target: USB-portable single .exe — plug-and-play, no install.
+# User data is kept next to the executable (see PORTABLE_EXECUTABLE_DIR
+# handling in electron/main.js) so the database travels with the stick.
+win:
+  target:
+    - portable
+    - nsis
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+
+linux:
+  target:
+    - AppImage
+  category: Office
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.productivity
+
+asarUnpack:
+  - node_modules/node-llama-cpp/**
+  - "node_modules/@node-llama-cpp/**"

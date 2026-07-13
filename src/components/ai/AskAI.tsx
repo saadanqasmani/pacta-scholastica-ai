@@ -85,7 +85,7 @@ export function AskAI() {
     line1: '"Why is my university underperforming?"',
     line2: '"Which departments need intervention?"',
     line3: '"Which partnerships would help us?"',
-    ask: 'Ask me anything about your institution',
+    ask: 'Ask IRIS anything about your institution',
     placeholder: 'Ask a question...',
     analyzing: 'Analyzing...',
   };
@@ -105,7 +105,7 @@ export function AskAI() {
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary-foreground" />
-              <span className="font-semibold text-primary-foreground">{language === 'tr' ? 'Yapay Zekaya Sor' : 'Ask AI'}</span>
+              <span className="font-semibold text-primary-foreground">{language === 'tr' ? "IRIS'e Sor" : 'Ask IRIS'}</span>
             </div>
             <Button
               variant="ghost"
@@ -152,7 +152,31 @@ export function AskAI() {
                           : 'bg-secondary text-secondary-foreground'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <div className="space-y-2">
+                          {message.content.split(/\n{2,}/).map((block, bi) => {
+                            const lines = block.split('\n');
+                            const isList = lines.length > 1 && lines.every((l) => /^\s*([•\-\d]+[.)]?\s)/.test(l) || l.trim() === '');
+                            if (isList) {
+                              return (
+                                <ul key={bi} className="ml-4 list-disc space-y-1">
+                                  {lines.filter((l) => l.trim()).map((l, li) => (
+                                    <li key={li}>{l.replace(/^\s*([•\-]|\d+[.)])\s*/, '')}</li>
+                                  ))}
+                                </ul>
+                              );
+                            }
+                            const isFootnote = block.trim().startsWith('—');
+                            return (
+                              <p key={bi} className={isFootnote ? 'whitespace-pre-wrap text-xs opacity-70' : 'whitespace-pre-wrap'}>
+                                {block}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                      )}
                     </div>
                   </div>
                 ))}

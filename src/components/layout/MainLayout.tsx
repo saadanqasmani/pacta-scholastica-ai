@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
+import { ImgIpiStrip } from './ImgIpiStrip';
 import { AskAI } from '@/components/ai/AskAI';
 
 interface MainLayoutProps {
@@ -12,6 +13,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background">
       <Header />
       <Navigation />
+      <ImgIpiStrip />
       <main className="container py-6">
         {children}
       </main>

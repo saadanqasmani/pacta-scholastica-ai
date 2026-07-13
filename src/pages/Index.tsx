@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ImgIpiCard } from '@/components/dashboard/ImgIpiCard';
+import { AgendaCard } from '@/components/dashboard/AgendaCard';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
   PieChart as RechartsPieChart, Pie, Cell, CartesianGrid, Legend,
@@ -101,8 +103,10 @@ const Index = () => {
           partnerRegions = partners || [];
         }
 
-        const signedMOUs = mous?.filter(m => m.status === 'signed').length || 0;
-        const pendingMOUs = mous?.filter(m => ['pending_review', 'pending_approval'].includes(m.status)).length || 0;
+        // Status values follow the MOU schema: accepted = signed/active,
+        // pending/revised/counter_proposed = awaiting a response.
+        const signedMOUs = mous?.filter(m => m.status === 'accepted').length || 0;
+        const pendingMOUs = mous?.filter(m => ['pending', 'revised', 'counter_proposed'].includes(m.status)).length || 0;
         const draftMOUs = mous?.filter(m => m.status === 'draft').length || 0;
 
         const incomingMobility = mobility?.filter(m => m.direction === 'incoming').reduce((sum, m) => sum + m.student_count, 0) || 0;
@@ -298,6 +302,8 @@ const Index = () => {
 
       {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <AgendaCard />
+        <ImgIpiCard />
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
