@@ -1,0 +1,53 @@
+# Builds the IRIS Windows desktop app on every push and publishes the
+# portable .exe as a GitHub Release download ("demo-latest" tag), plus a
+# build artifact. Runs on GitHub's Windows machines, so the executable
+# gets proper metadata without any local tooling.
+name: Build Windows App
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+
+      - name: Package portable .exe
+        run: npx electron-builder --win portable
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IRIS-windows-portable
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: Publish "demo-latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: demo-latest
+          name: IRIS Demo Build (latest)
+          body: |
+            Latest automated build of the IRIS desktop app (Windows portable).
+            Download `IRIS-0.1.0-portable.exe`, double-click, done — no install needed.
+            First run: Windows SmartScreen → "More info" → "Run anyway".
+          prerelease: true
+          files: release/*.exe
