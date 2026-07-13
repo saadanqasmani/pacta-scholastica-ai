@@ -16,10 +16,22 @@ contextBridge.exposeInMainWorld("iris", {
   /** App version, platform and storage paths from the main process. */
   getAppInfo: () => ipcRenderer.invoke("iris:app:get-info"),
 
+  /** Local LLM (llama.cpp) — fully offline AI. See electron/llm.mjs. */
+  ai: {
+    status: () => ipcRenderer.invoke("iris:ai:status"),
+    download: (id) => ipcRenderer.invoke("iris:ai:download", id),
+    cancel: () => ipcRenderer.invoke("iris:ai:cancel"),
+    delete: (id) => ipcRenderer.invoke("iris:ai:delete", id),
+    generate: (p) => ipcRenderer.invoke("iris:ai:generate", p),
+    onProgress: (cb) => {
+      ipcRenderer.on("iris:ai:progress", (_event, data) => cb(data));
+      return () => ipcRenderer.removeAllListeners("iris:ai:progress");
+    },
+  },
+
   // Future capability namespaces — handlers are registered in
   // electron/main.js as the corresponding migration steps land:
   //
   // db:    invoke("iris:db:query", ...)      — local SQLite storage
-  // ai:    invoke("iris:ai:complete", ...)   — Claude API bridge
   // vault: invoke("iris:vault:search", ...)  — Knowledge Vault retrieval
 });

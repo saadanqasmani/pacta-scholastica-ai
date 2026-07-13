@@ -1075,6 +1075,10 @@ const HANDLERS: Record<string, (cfg: AIConfig, body: Row) => Promise<unknown>> =
  * Drop-in local replacement for `supabase.functions.invoke(name, { body })`.
  * Returns `{ data, error }` with the exact same `data` shapes the edge
  * functions produced.
+ *
+ * Fallback chain for ai-chat: cloud provider (if configured) → local LLM
+ * (desktop app with a downloaded model) → deterministic built-in engine.
+ * All other functions go cloud → built-in engine.
  */
 export async function invokeLocalFunction(
   name: string,
@@ -1098,6 +1102,23 @@ export async function invokeLocalFunction(
         // (quota errors, network hiccups, model changes, parse failures).
         console.warn(`[IRIS] Cloud AI failed for "${name}", using built-in engine:`, err);
       }
+    }
+  }
+
+  // Local LLM (real language model running fully offline in the desktop
+  // app) — chat only. Any failure falls through to the built-in engine.
+  if (name === 'ai-chat') {
+    try {
+      const { isLocalLLMAvailable, askLocalLLM } = await import('@/lib/localLLM');
+      if (await isLocalLLMAvailable()) {
+        const response = await askLocalLLM(
+          String((body || {}).message ?? ''),
+          body?.university_id ? String(body.university_id) : null
+        );
+        if (response) return { data: { response }, error: null };
+      }
+    } catch (err) {
+      console.warn('[IRIS] Local LLM failed for "ai-chat", using built-in engine:', err);
     }
   }
 

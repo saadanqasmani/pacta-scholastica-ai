@@ -85,7 +85,7 @@ export function AskAI() {
     line1: '"Why is my university underperforming?"',
     line2: '"Which departments need intervention?"',
     line3: '"Which partnerships would help us?"',
-    ask: 'Ask me anything about your institution',
+    ask: 'Ask IRIS anything about your institution',
     placeholder: 'Ask a question...',
     analyzing: 'Analyzing...',
   };
@@ -105,7 +105,7 @@ export function AskAI() {
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary-foreground" />
-              <span className="font-semibold text-primary-foreground">{language === 'tr' ? 'Yapay Zekaya Sor' : 'Ask AI'}</span>
+              <span className="font-semibold text-primary-foreground">{language === 'tr' ? "IRIS'e Sor" : 'Ask IRIS'}</span>
             </div>
             <Button
               variant="ghost"

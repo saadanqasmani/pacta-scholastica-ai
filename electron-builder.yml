@@ -37,3 +37,7 @@ mac:
   target:
     - dmg
   category: public.app-category.productivity
+
+asarUnpack:
+  - node_modules/node-llama-cpp/**
+  - "node_modules/@node-llama-cpp/**"

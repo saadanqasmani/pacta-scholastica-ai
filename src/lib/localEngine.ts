@@ -13,7 +13,8 @@
  */
 import { db, ensureSeeded } from '@/lib/localdb';
 import { searchLibrary } from '@/lib/libraryIndex';
-import type { IMGIPIResult } from '@/lib/imgIpi';
+import type { IMGIPIResult, IMGIPIInputs } from '@/lib/imgIpi';
+import { forecastInterventions } from '@/lib/imgIpiForecast';
 
 type Row = Record<string, unknown>;
 
@@ -47,7 +48,7 @@ interface UniData {
   outgoing: number;
   roi: Row[];
   avgSatisfaction: number | null;
-  assessment: { result: IMGIPIResult; created_at: string } | null;
+  assessment: { result: IMGIPIResult; created_at: string; inputs?: IMGIPIInputs } | null;
   partnerIds: string[];
 }
 
@@ -71,7 +72,7 @@ async function loadUniversityData(universityId: string): Promise<UniData> {
   const assessments = (await db.img_ipi_assessments
     .where('university_id')
     .equals(universityId)
-    .toArray()) as unknown as { result: IMGIPIResult; created_at: string }[];
+    .toArray()) as unknown as { result: IMGIPIResult; created_at: string; inputs?: IMGIPIInputs }[];
   assessments.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
   const partnerIds = [
@@ -442,6 +443,128 @@ async function aiEvaluateLocal(body: Row): Promise<unknown> {
     // best-effort cache
   }
   return { evaluation };
+}
+
+// ---------------------------------------------------------------------------
+// Chat context builder — shared by aiChatLocal (below) and the local LLM
+// (src/lib/localLLM.ts), which uses it as the RAG context block.
+// ---------------------------------------------------------------------------
+
+const DIMENSION_NAMES: Record<string, string> = {
+  IA: 'Information Asymmetry',
+  WF: 'Workflow Fragmentation',
+  DID: 'Digital Infrastructure Deficit',
+  LC: 'Leadership Commitment',
+};
+
+/**
+ * Build a compact plain-text context block about a university for grounding
+ * a language model: profile, partnership/mobility/project counts with key
+ * names, the latest IMG/IPI result (gaps, quadrant, top forecast
+ * interventions) and up to 4 Data Library passages relevant to the question.
+ * Capped at ~2500 words.
+ */
+export async function buildChatContext(
+  universityId: string | null,
+  question: string
+): Promise<string> {
+  await ensureSeeded();
+  const sections: string[] = [];
+
+  if (universityId) {
+    const d = await loadUniversityData(universityId);
+    if (d.uni) {
+      const u = d.uni;
+      const strengths = strengthsOf(u);
+      sections.push(
+        `UNIVERSITY PROFILE:\n${u.name} — ${u.type} university in ${u.country} (${u.region}), ${u.size} size, ${u.internationalization_maturity} internationalization maturity${u.founded_year ? `, founded ${u.founded_year}` : ''}.${strengths.length ? ` Research strengths: ${strengths.join(', ')}.` : ''}`
+      );
+
+      const allUnis = (await db.universities.toArray()) as Row[];
+      const nameOf = (id: string) => String(allUnis.find((x) => x.id === id)?.name ?? 'Unknown');
+      const pending = d.mous.filter((m) =>
+        ['pending', 'revised', 'counter_proposed'].includes(String(m.status))
+      ).length;
+      const partnerNames = d.partnerIds.slice(0, 8).map(nameOf);
+      sections.push(
+        `PARTNERSHIPS:\n${d.mous.length} MOUs total — ${d.activeMous.length} active (signed), ${pending} awaiting response, ${d.mous.filter((m) => m.status === 'rejected').length} rejected. ${d.partnerIds.length} partner institution${d.partnerIds.length === 1 ? '' : 's'}${partnerNames.length ? `: ${partnerNames.join(', ')}${d.partnerIds.length > 8 ? ', …' : ''}` : ''}.`
+      );
+
+      sections.push(
+        `MOBILITY:\n${d.mobility.length} mobility records — ${d.incoming} incoming, ${d.outgoing} outgoing students (balance ${d.incoming - d.outgoing >= 0 ? '+' : ''}${d.incoming - d.outgoing}).`
+      );
+
+      const projects = (await db.partner_projects
+        .where('university_id')
+        .equals(universityId)
+        .toArray()) as Row[];
+      const research = (await db.research_collaborations
+        .where('university_id')
+        .equals(universityId)
+        .toArray()) as Row[];
+      if (projects.length || research.length) {
+        const active = projects.filter((p) => p.status === 'active');
+        sections.push(
+          `PROJECTS:\n${projects.length} joint project${projects.length === 1 ? '' : 's'} (${active.length} active${active.length ? ': ' + active.slice(0, 3).map((p) => String(p.project_name)).join('; ') : ''}) and ${research.length} research collaboration${research.length === 1 ? '' : 's'}.`
+        );
+      }
+
+      if (d.assessment) {
+        const r = d.assessment.result;
+        const lines: string[] = [
+          `Measured on ${new Date(d.assessment.created_at).toLocaleDateString()}: IMG ${r.img.toFixed(3)} (${r.imgBand} gap) — dimensions IA ${r.ia.score.toFixed(3)}, WF ${r.wf.score.toFixed(3)}, DID ${r.did.score.toFixed(3)}. IPI ${r.ipi.toFixed(3)} (${r.ipiBand} potential) — LC ${r.lc.toFixed(3)}, RF ${r.rf.toFixed(3)}.`,
+          `Institutional profile quadrant: ${r.profile.quadrant} — "${r.profile.title}". ${r.profile.implication}`,
+        ];
+        for (const g of r.gaps.slice(0, 3)) {
+          lines.push(
+            `Gap ${g.dimension} (${DIMENSION_NAMES[g.dimension] ?? g.dimension}), severity ${g.severity.toFixed(3)}: ${g.finding} Addressed by: ${g.irisModule}.`
+          );
+        }
+        if (d.assessment.inputs) {
+          try {
+            const fc = forecastInterventions(d.assessment.inputs);
+            const top = fc.entries.slice(0, 3);
+            if (top.length) {
+              lines.push(
+                `Top forecast interventions (simulated with the framework equations): ` +
+                  top
+                    .map(
+                      (e, i) =>
+                        `${i + 1}. ${e.intervention.title} → IMG ${e.img.toFixed(3)} (${e.imgDelta.toFixed(3)}), IPI ${e.ipi.toFixed(3)} (+${e.ipiDelta.toFixed(3)})`
+                    )
+                    .join('; ') +
+                  '.'
+              );
+            }
+          } catch {
+            // forecast is best-effort
+          }
+        }
+        sections.push(`IMG/IPI ASSESSMENT (latest):\n${lines.join('\n')}`);
+      } else {
+        sections.push(
+          `IMG/IPI ASSESSMENT:\nNo assessment on file yet — the IMG/IPI Diagnostics module provides it.`
+        );
+      }
+    }
+  }
+
+  try {
+    const hits = await searchLibrary(question, 4);
+    if (hits.length > 0) {
+      sections.push(
+        `DATA LIBRARY PASSAGES (relevant to the question):\n` +
+          hits.map((h) => `[${h.documentTitle}] ${h.text}`).join('\n')
+      );
+    }
+  } catch {
+    // library may be empty — fine
+  }
+
+  let context = sections.join('\n\n');
+  const words = context.split(/\s+/);
+  if (words.length > 2500) context = words.slice(0, 2500).join(' ') + ' …';
+  return context;
 }
 
 // ---------------------------------------------------------------------------

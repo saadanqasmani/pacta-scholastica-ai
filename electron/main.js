@@ -107,10 +107,10 @@ function createMainWindow() {
 }
 
 // --- IPC handlers -----------------------------------------------------------
-// Channels consumed by electron/preload.cjs. The data and AI layers land in
-// later migration steps and will register their handlers here:
+// Channels consumed by electron/preload.cjs. Registered namespaces:
+//   iris:ai:*      → local LLM (llama.cpp via node-llama-cpp, see llm.mjs)
+// Reserved for later migration steps:
 //   iris:db:*      → local SQLite storage (replaces Supabase)
-//   iris:ai:*      → Claude API bridge (activates once an API key is set)
 //   iris:vault:*   → Knowledge Vault document ingestion / retrieval
 
 ipcMain.handle("iris:app:get-info", () => ({
@@ -119,6 +119,68 @@ ipcMain.handle("iris:app:get-info", () => ({
   userDataPath: app.getPath("userData"),
   portable: Boolean(portableDir),
 }));
+
+// --- iris:ai:* — local LLM (llama.cpp via node-llama-cpp) -------------------
+// The module is imported lazily inside the handlers so a broken native
+// binding can never block app boot: if the import fails, every channel
+// reports { available:false, reason } / { error } instead of crashing.
+
+let llmModulePromise = null;
+async function getLLM() {
+  if (!llmModulePromise) {
+    llmModulePromise = import("./llm.mjs").then((m) => m.getLLMManager());
+    llmModulePromise.catch(() => {
+      // Allow a retry on the next call instead of caching the failure forever.
+      llmModulePromise = null;
+    });
+  }
+  return llmModulePromise;
+}
+
+ipcMain.handle("iris:ai:status", async () => {
+  try {
+    const llm = await getLLM();
+    return llm.status();
+  } catch (err) {
+    return { available: false, reason: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:ai:download", async (event, tierId) => {
+  try {
+    const llm = await getLLM();
+    return await llm.download(tierId, event.sender);
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:ai:cancel", async () => {
+  try {
+    const llm = await getLLM();
+    return llm.cancelDownload();
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:ai:delete", async (_event, id) => {
+  try {
+    const llm = await getLLM();
+    return await llm.deleteModel(id);
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
+
+ipcMain.handle("iris:ai:generate", async (_event, payload) => {
+  try {
+    const llm = await getLLM();
+    return await llm.generate(payload || {});
+  } catch (err) {
+    return { error: err?.message ? String(err.message) : String(err) };
+  }
+});
 
 // ----------------------------------------------------------------------------
 

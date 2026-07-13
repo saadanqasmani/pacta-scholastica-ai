@@ -476,15 +476,47 @@ export default function Diagnostics() {
               <div className="flex justify-end">
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     try {
+                      // Benchmark cohort: the latest assessment of every
+                      // university in the registry, subject flagged.
+                      const [allAssessments, allUnis] = await Promise.all([
+                        db.img_ipi_assessments.toArray(),
+                        db.universities.toArray(),
+                      ]);
+                      const nameById = new Map(
+                        (allUnis as { id: string; name: string }[]).map((u) => [u.id, u.name])
+                      );
+                      const latestByUni = new Map<string, { img: number; ipi: number; created_at: string }>();
+                      for (const row of allAssessments as unknown as {
+                        university_id: string;
+                        result: IMGIPIResult;
+                        created_at: string;
+                      }[]) {
+                        if (row.university_id === 'system' || !row.result) continue;
+                        const prev = latestByUni.get(row.university_id);
+                        if (!prev || row.created_at > prev.created_at) {
+                          latestByUni.set(row.university_id, {
+                            img: row.result.img,
+                            ipi: row.result.ipi,
+                            created_at: row.created_at,
+                          });
+                        }
+                      }
+                      const cohort = [...latestByUni.entries()].map(([id, v]) => ({
+                        name: nameById.get(id) ?? 'Unknown',
+                        img: v.img,
+                        ipi: v.ipi,
+                        isSubject: id === selectedUniversity?.id,
+                      }));
                       generateAssessmentReport({
                         universityName: selectedUniversity?.name ?? 'Institution',
                         inputs,
                         result,
                         assessedAt: new Date().toISOString(),
+                        cohort,
                       });
-                      toast.success('Assessment report downloaded as PDF.');
+                      toast.success('Expert assessment report downloaded as PDF.');
                     } catch (e) {
                       toast.error(e instanceof Error ? e.message : 'PDF generation failed');
                     }
