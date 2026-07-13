@@ -11,8 +11,9 @@
  * presenter. Seeding only fills EMPTY tables — real user data is never
  * touched or duplicated.
  */
-import { db } from '@/lib/localdb';
+import { db, newId } from '@/lib/localdb';
 import { computeIMGIPI, IMGIPIInputs } from '@/lib/imgIpi';
+import { chunkText } from '@/lib/libraryIndex';
 
 export const HOME_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
 
@@ -445,11 +446,267 @@ async function seedAssessments(): Promise<void> {
   await db.img_ipi_assessments.bulkPut(rows as { id: string }[]);
 }
 
-/** Idempotent entry point — fills only tables that are still empty. */
+
+/** Operational life for EVERY university in the network: each accepted
+ *  cross-network MOU produces mobility, ROI and (for a subset) projects,
+ *  research, interactions and inbox items on BOTH sides — so "Viewing as"
+ *  any institution shows a fully populated system. Deterministic ids make
+ *  this idempotent under bulkPut. */
+async function seedCrossOperational(): Promise<void> {
+  const mous = (await db.mous.filter((m) => String(m.id).startsWith('demo-net-')).toArray()) as Record<
+    string,
+    unknown
+  >[];
+  const mobility: Record<string, unknown>[] = [];
+  const roi: Record<string, unknown>[] = [];
+  const projects: Record<string, unknown>[] = [];
+  const research: Record<string, unknown>[] = [];
+  const interactions: Record<string, unknown>[] = [];
+  const requests: Record<string, unknown>[] = [];
+  const messages: Record<string, unknown>[] = [];
+
+  const PROJECT_NAMES = [
+    'Joint Summer School Programme',
+    'Double Degree Feasibility Study',
+    'Erasmus+ KA171 Mobility Project',
+    'Joint Research Seed Fund',
+    'Staff Training Week Exchange',
+  ];
+  const RESEARCH_TITLES = [
+    'Comparative Higher Education Systems Study',
+    'Sustainable Campus Operations Research',
+    'Digital Learning Outcomes Analysis',
+    'Regional Labour Market Alignment Study',
+  ];
+
+  for (const mou of mous) {
+    if (mou.status !== 'accepted') continue;
+    const a = String(mou.initiator_university_id);
+    const b = String(mou.partner_university_id);
+    const mouId = String(mou.id);
+    const startYear = Math.max(2022, new Date(String(mou.created_at)).getUTCFullYear());
+
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      // Mobility: both directions for the last two academic years.
+      for (const year of YEARS) {
+        if (Number(year.slice(0, 4)) < startYear) continue;
+        for (const direction of ['incoming', 'outgoing'] as const) {
+          const seed = `${mouId}-${self}-${year}-${direction}`;
+          const v = h01(seed);
+          if (v < 0.35) continue;
+          mobility.push({
+            id: `demo-xmob-${seed}`,
+            university_id: self,
+            partner_university_id: other,
+            department_id: null,
+            program_type: pick(PROGRAMS, seed),
+            direction,
+            student_count: 1 + Math.floor(v * 7),
+            academic_year: year,
+            completion_status: year === '2025-2026' ? 'ongoing' : 'completed',
+            created_at: iso(Number(year.slice(0, 4)), 9, 20),
+          });
+        }
+      }
+      // ROI for the most recent full year.
+      const rv = h01(`${mouId}-${self}-roi`);
+      roi.push({
+        id: `demo-xroi-${mouId}-${self}`,
+        university_id: self,
+        partner_university_id: other,
+        partnership_year: 2025,
+        student_exchange_count: 2 + Math.floor(rv * 10),
+        research_collaborations: Math.floor(rv * 3),
+        joint_publications: Math.floor(rv * 4),
+        grant_funding_usd: Math.floor(rv * 60) * 1000,
+        satisfaction_score: Math.round((3.0 + rv * 1.8) * 10) / 10,
+        created_at: iso(2025, 12, 15),
+      });
+      // A subset get projects / research / an interaction on record.
+      if (h01(`${mouId}-${self}-prj`) > 0.7) {
+        const pv = h01(`${mouId}-${self}-prjv`);
+        projects.push({
+          id: `demo-xprj-${mouId}-${self}`,
+          university_id: self,
+          partner_university_id: other,
+          project_name: pick(PROJECT_NAMES, `${mouId}-${self}`),
+          project_type: 'academic',
+          description: 'Joint initiative under the bilateral cooperation agreement.',
+          status: pv > 0.5 ? 'active' : 'planning',
+          progress: Math.floor(pv * 80),
+          start_date: iso(2025, 3, 1),
+          end_date: iso(2026, 12, 31),
+          budget_usd: 10000 + Math.floor(pv * 40) * 1000,
+          created_at: iso(2025, 2, 10),
+          updated_at: iso(2026, 6, 1),
+        });
+      }
+      if (h01(`${mouId}-${self}-res`) > 0.75) {
+        const rv2 = h01(`${mouId}-${self}-resv`);
+        research.push({
+          id: `demo-xres-${mouId}-${self}`,
+          university_id: self,
+          partner_university_id: other,
+          title: pick(RESEARCH_TITLES, `${mouId}-${self}`),
+          status: 'active',
+          publications_count: 1 + Math.floor(rv2 * 4),
+          funding_amount: 8000 + Math.floor(rv2 * 50) * 1000,
+          created_at: iso(2025, 5, 20),
+        });
+      }
+      if (h01(`${mouId}-${self}-int`) > 0.8) {
+        interactions.push({
+          id: `demo-xint-${mouId}-${self}`,
+          university_id: self,
+          partner_university_id: other,
+          title: 'Annual partnership review meeting',
+          interaction_type: 'video_call',
+          status: 'completed',
+          stage: 'implementation',
+          meeting_date: iso(2026, 4, 14),
+          discussion_notes: 'Reviewed exchange numbers and agreed next-year nomination quotas.',
+          outcomes: 'Quotas confirmed; joint activity calendar drafted.',
+          goals: 'Maintain balanced two-way mobility.',
+          created_at: iso(2026, 4, 14),
+        });
+      }
+    }
+  }
+
+  // A small live inbox for every university.
+  const unis = (await db.universities.toArray()) as { id: string; name: string }[];
+  for (const u of unis) {
+    if (u.id === HOME_ID) continue; // home inbox is richer, seeded separately
+    const v = h01('inbox' + u.id);
+    const from = unis[Math.floor(v * unis.length) % unis.length];
+    if (from.id === u.id) continue;
+    requests.push({
+      id: `demo-xreq-${u.id}`,
+      from_university_id: from.id,
+      to_university_id: u.id,
+      request_type: 'partnership',
+      subject: 'Interest in a bilateral exchange agreement',
+      message: `${from.name} would welcome a conversation about establishing a student exchange agreement.`,
+      status: 'pending',
+      priority: v > 0.6 ? 'high' : 'normal',
+      created_at: iso(2026, 6, 1 + Math.floor(v * 25)),
+    });
+    messages.push({
+      id: `demo-xmsg-${u.id}`,
+      from_university_id: from.id,
+      to_university_id: u.id,
+      subject: 'Nomination period opening soon',
+      message: 'Our spring nomination window opens next month — please confirm your coordinator contact.',
+      message_type: 'administrative',
+      is_read: v > 0.5,
+      created_at: iso(2026, 6, 5 + Math.floor(v * 20)),
+    });
+  }
+
+  await db.mobility_records.bulkPut(mobility as { id: string }[]);
+  await db.partner_roi.bulkPut(roi as { id: string }[]);
+  await db.partner_projects.bulkPut(projects as { id: string }[]);
+  await db.research_collaborations.bulkPut(research as { id: string }[]);
+  await db.partnership_interactions.bulkPut(interactions as { id: string }[]);
+  await db.partner_requests.bulkPut(requests as { id: string }[]);
+  await db.partner_messages.bulkPut(messages as { id: string }[]);
+}
+
+/** Pre-load the Data Library with realistic institutional documents so
+ *  Ask AI and library search have content out of the box. */
+async function seedLibrary(): Promise<void> {
+  if ((await db.library_documents.count()) > 0) return;
+
+  const DOCS: { title: string; filename: string; text: string }[] = [
+    {
+      title: 'International Partnership Handbook — İstanbul Nişantaşı University',
+      filename: 'partnership-handbook.md',
+      text: `International Partnership Handbook. İstanbul Nişantaşı University, International Relations Office, 2026 edition.
+Partner nominations: partner universities must submit student nominations by 15 May for the fall semester and 15 October for the spring semester. Late nominations are accepted only with written approval from the International Relations Office director.
+Tuition policy: exchange students under a bilateral MOU or Erasmus+ agreement pay tuition only to their home institution. No tuition fees are charged by Nişantaşı to incoming exchange students.
+Credit recognition: all exchange study is governed by a Learning Agreement signed before mobility begins. Credits are recognized using ECTS. A minimum of 30 ECTS per semester constitutes a full study load.
+Language of instruction: exchange students may take courses in English from the approved English-medium course catalogue. A B2 level of English (or equivalent) is required; no TOEFL or IELTS certificate is required if the home university certifies the student's level.
+Accommodation: the university does not guarantee dormitory placement for exchange students but provides a verified list of private housing providers and a buddy-programme contact within 48 hours of nomination acceptance.
+Insurance and visas: incoming students must hold health insurance valid in Turkey for the entire mobility period and are responsible for obtaining a student visa before arrival. The office issues acceptance letters within 10 working days of complete nomination.
+Contacts: International Relations Office, Maslak Campus. Erasmus institutional coordinator: erasmus@nisantasi.edu.tr. Bilateral agreements: partnerships@nisantasi.edu.tr.`,
+    },
+    {
+      title: 'Erasmus+ KA171 Quick Reference Guide',
+      filename: 'erasmus-ka171-guide.md',
+      text: `Erasmus+ KA171 (International Credit Mobility) quick reference.
+What it funds: student mobility for studies (2 to 12 months), student mobility for traineeships, staff mobility for teaching, and staff mobility for training between programme countries and partner countries.
+Student grant rates: incoming students to Turkey receive a monthly grant of approximately 800 EUR plus a distance-based travel contribution between 275 and 820 EUR. Outgoing rates depend on the destination country group.
+Staff mobility: teaching assignments require a minimum of 8 teaching hours per week. Staff mobility duration is typically 5 days plus travel.
+Application windows: institutional applications are submitted to the National Agency in February each year. Inter-institutional agreements must be signed before any mobility begins.
+Selection principles: transparent and documented selection criteria, equal treatment, and priority for participants with fewer opportunities. Selection results must be published and an appeals channel provided.
+Reporting: participants must complete the EU Survey within 30 days of completing mobility. Institutions report through the Beneficiary Module.
+Recognition: full academic recognition of satisfactorily completed mobility is mandatory, using ECTS and the Learning Agreement.`,
+    },
+    {
+      title: 'International Student Admission Requirements 2026',
+      filename: 'admission-requirements-2026.txt',
+      text: `International student admission requirements, 2026 intake.
+Undergraduate applicants must provide: a high school diploma (attested by apostille for Hague Convention countries, or Ministry of Foreign Affairs plus Turkish Consulate attestation otherwise), a complete official transcript, a valid passport copy, two biometric photographs, and a completed application form.
+Diploma equivalency: a Denklik (equivalency) certificate from the Turkish Ministry of National Education is required before final registration. Applications can be started online through the e-Denklik system and typically take 4 to 12 weeks.
+Language requirements: programmes taught in Turkish require TÖMER C1 or completion of the university's Turkish preparatory year. Programmes taught in English require B2 proficiency, demonstrated by TOEFL iBT 72, IELTS 5.5 (specific programmes may require higher), or the university's own English proficiency examination.
+Application deadlines: early admission closes 30 April 2026; regular admission closes 31 July 2026; late applications are considered until 5 September 2026 subject to quota availability.
+Tuition deposits: admitted students confirm their place with a 500 USD deposit, deducted from first-semester tuition. The deposit is refundable only if a student visa is refused, upon presentation of the refusal letter.
+Scholarships: merit scholarships between 25 and 100 percent of tuition are available based on academic standing; applications are automatic with admission. Sibling and early-payment discounts cannot be combined with merit scholarships above 50 percent.
+Residence permits: after arrival, students must apply for a student residence permit (ikamet) within 30 days through e-ikamet, with university enrollment certificate and valid health insurance.`,
+    },
+  ];
+
+  const now = iso(2026, 5, 10);
+  for (const doc of DOCS) {
+    const docId = newId();
+    const chunks = chunkText(doc.text);
+    await db.library_documents.add({
+      id: docId,
+      title: doc.title,
+      filename: doc.filename,
+      filetype: doc.filename.split('.').pop()?.toUpperCase() ?? 'MD',
+      size: doc.text.length,
+      university_id: HOME_ID,
+      chunk_count: chunks.length,
+      created_at: now,
+    });
+    await db.library_chunks.bulkAdd(
+      chunks.map((text, seq) => ({ id: `${docId}-${seq}`, document_id: docId, seq, text }))
+    );
+    await db.storage_files.put({
+      id: `library/${docId}/${doc.filename}`,
+      bucket: 'library',
+      path: `${docId}/${doc.filename}`,
+      blob: new Blob([doc.text], { type: 'text/plain' }),
+      created_at: now,
+    });
+  }
+}
+
+/** Idempotent entry point — fills only what is missing, never user data. */
 export async function ensureDemoData(): Promise<void> {
   if ((await db.mous.count()) === 0) {
     await seedHomeNetwork();
     await seedCrossNetwork();
   }
   await seedAssessments(); // per-university check inside
+  // v2 expansion: operational data for the whole network + library preload.
+  // Marker row keeps this cheap on every startup; bulkPut with deterministic
+  // ids makes a re-run harmless anyway.
+  const marker = await db.ai_evaluations.get('iris-demo-seed-v2');
+  if (!marker) {
+    await seedCrossOperational();
+    await seedLibrary();
+    await db.ai_evaluations.put({
+      id: 'iris-demo-seed-v2',
+      university_id: 'system',
+      evaluation_type: 'seed-marker',
+      evaluation_data: { version: 2 },
+      created_at: new Date().toISOString(),
+      expires_at: '2099-01-01T00:00:00Z',
+    });
+  }
 }

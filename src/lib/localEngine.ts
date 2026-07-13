@@ -456,28 +456,44 @@ async function aiChatLocal(body: Row): Promise<unknown> {
 
   await ensureSeeded();
   const d = universityId ? await loadUniversityData(universityId) : null;
+  const allUnis = (await db.universities.toArray()) as Row[];
+  const nameOf = (id: string) => String(allUnis.find((u) => u.id === id)?.name ?? 'Unknown');
 
-  // 1. Structured-data intents ------------------------------------------------
   const wants = (...words: string[]) => words.some((w) => q.includes(w));
 
-  if (d?.uni && wants('mou', 'agreement', 'protokol', 'anlaşma')) {
+  // --- Structured-data intents (plain text output — the chat panel does not
+  // --- render markdown, so never emit ** or _ markers) ---------------------
+
+  if (d?.uni && wants('mou', 'agreement', 'protokol', 'anlaşma', 'contract')) {
     const pending = d.mous.filter((m) =>
       ['pending', 'revised', 'counter_proposed'].includes(String(m.status))
     ).length;
     parts.push(
-      `**MOU status for ${d.uni.name}:** ${d.mous.length} total — ${d.activeMous.length} active (accepted), ${pending} awaiting response, ${d.mous.filter((m) => m.status === 'rejected').length} rejected. Manage them in the MOU Management module.`
+      `MOU status for ${d.uni.name}: ${d.mous.length} total — ${d.activeMous.length} active (signed), ${pending} awaiting response, ${d.mous.filter((m) => m.status === 'rejected').length} rejected. You can manage them in the MOU Management module.`
     );
   }
-  if (d?.uni && wants('mobility', 'exchange', 'student', 'erasmus', 'hareketlilik')) {
+
+  if (d?.uni && wants('partner', 'partners', 'ortak', 'who do we work')) {
+    const names = d.partnerIds.slice(0, 8).map(nameOf);
+    if (names.length) {
+      parts.push(
+        `${d.uni.name} currently has ${d.partnerIds.length} partner institution${d.partnerIds.length === 1 ? '' : 's'}: ${names.join(', ')}${d.partnerIds.length > 8 ? '…' : ''}.`
+      );
+    }
+  }
+
+  if (d?.uni && wants('mobility', 'exchange', 'erasmus', 'hareketlilik', 'incoming', 'outgoing', 'student flow', 'how many students')) {
     parts.push(
-      `**Mobility for ${d.uni.name}:** ${d.mobility.length} records — ${d.incoming} incoming, ${d.outgoing} outgoing (balance ${d.incoming - d.outgoing >= 0 ? '+' : ''}${d.incoming - d.outgoing}). Details are in the Mobility module.`
+      `Mobility for ${d.uni.name}: ${d.mobility.length} records — ${d.incoming} incoming, ${d.outgoing} outgoing (balance ${d.incoming - d.outgoing >= 0 ? '+' : ''}${d.incoming - d.outgoing}). Details are in the Mobility module.`
     );
   }
-  if (d?.uni && wants('img', 'ipi', 'gap', 'assessment', 'diagnos', 'tanı')) {
+
+  if (d?.uni && wants('img', 'ipi', 'gap', 'assessment', 'diagnos', 'tanı', 'score', 'maturity')) {
     if (d.assessment) {
       const r = d.assessment.result;
       parts.push(
-        `**Latest IMG/IPI assessment (${new Date(d.assessment.created_at).toLocaleDateString()}):** IMG ${r.img.toFixed(3)} (${r.imgBand} gap), IPI ${r.ipi.toFixed(3)} (${r.ipiBand}). Profile: ${r.profile.title}. Top gap: ${r.gaps[0] ? `${r.gaps[0].dimension} — ${r.gaps[0].irisModule}` : 'none'}.`
+        `Latest IMG/IPI assessment (${new Date(d.assessment.created_at).toLocaleDateString()}): IMG ${r.img.toFixed(3)} — ${r.imgBand} gap. IPI ${r.ipi.toFixed(3)} — ${r.ipiBand} potential. Profile: ${r.profile.title}.` +
+          (r.gaps[0] ? ` Most acute gap: ${r.gaps[0].dimension}, addressed by ${r.gaps[0].irisModule}.` : '')
       );
     } else {
       parts.push(
@@ -485,42 +501,70 @@ async function aiChatLocal(body: Row): Promise<unknown> {
       );
     }
   }
-  if (wants('recommend', 'partner suggest', 'which partner', 'öner') && d?.uni) {
+
+  if (d?.uni && wants('recommend', 'suggest', 'which university', 'new partner', 'öner', 'candidates')) {
     const recs = (await evalPartnerRecommendations(d)) as { recommendations: Row[] };
     const top = recs.recommendations.slice(0, 3);
     if (top.length) {
       parts.push(
-        `**Top partner candidates for ${d.uni.name}:**\n` +
+        `Top partner candidates for ${d.uni.name}:\n` +
           top
-            .map(
-              (r, i) =>
-                `${i + 1}. ${r.university_name} (${r.country}) — match score ${r.match_score}/100`
-            )
+            .map((r, i) => `  ${i + 1}. ${r.university_name} (${r.country}) — match score ${r.match_score}/100`)
             .join('\n') +
-          `\nFull reasoning is available in Partner Discovery.`
+          `\nFull reasoning is in Partner Discovery → AI Recommended.`
       );
     }
   }
 
-  // Mentioned university lookup (excluding the selected one, already covered)
-  const allUnis = (await db.universities.toArray()) as Row[];
+  if (d?.uni && wants('project', 'research', 'collaborat', 'proje')) {
+    const projects = (await db.partner_projects.where('university_id').equals(String(d.uni.id)).toArray()) as Row[];
+    const research = (await db.research_collaborations.where('university_id').equals(String(d.uni.id)).toArray()) as Row[];
+    if (projects.length || research.length) {
+      const active = projects.filter((p) => p.status === 'active');
+      parts.push(
+        `${d.uni.name} has ${projects.length} joint project${projects.length === 1 ? '' : 's'} (${active.length} active${active.length ? ': ' + active.slice(0, 3).map((p) => String(p.project_name)).join('; ') : ''}) and ${research.length} research collaboration${research.length === 1 ? '' : 's'}.`
+      );
+    }
+  }
+
+  if (d?.uni && wants('request', 'message', 'inbox', 'waiting', 'pending items', 'action')) {
+    const reqs = (await db.partner_requests.where('to_university_id').equals(String(d.uni.id)).toArray()) as Row[];
+    const msgs = (await db.partner_messages.where('to_university_id').equals(String(d.uni.id)).toArray()) as Row[];
+    const openReqs = reqs.filter((r) => r.status === 'pending');
+    const unread = msgs.filter((m) => !m.is_read);
+    parts.push(
+      `Inbox for ${d.uni.name}: ${openReqs.length} open partnership request${openReqs.length === 1 ? '' : 's'}${openReqs.length ? ` (latest: "${String(openReqs[openReqs.length - 1].subject)}")` : ''} and ${unread.length} unread message${unread.length === 1 ? '' : 's'}.`
+    );
+  }
+
+  // Mentioned university lookup (other than the selected one)
   const mentioned = allUnis.find(
     (u) => u.id !== universityId && q.includes(String(u.name).toLowerCase().slice(0, 12))
   );
   if (mentioned) {
+    const strengths = Array.isArray(mentioned.research_strengths)
+      ? (mentioned.research_strengths as string[])
+      : [];
     parts.push(
-      `**${mentioned.name}** — ${mentioned.type} university in ${mentioned.country} (${mentioned.region}), ${mentioned.size} size, ${mentioned.internationalization_maturity} internationalization maturity${mentioned.founded_year ? `, founded ${mentioned.founded_year}` : ''}${Array.isArray(mentioned.research_strengths) && (mentioned.research_strengths as string[]).length ? `. Research strengths: ${(mentioned.research_strengths as string[]).join(', ')}` : ''}.`
+      `${mentioned.name} — ${mentioned.type} university in ${mentioned.country} (${mentioned.region}), ${mentioned.size} size, ${mentioned.internationalization_maturity} internationalization maturity${mentioned.founded_year ? `, founded ${mentioned.founded_year}` : ''}${strengths.length ? `. Research strengths: ${strengths.join(', ')}` : ''}.`
     );
   }
 
-  // 2. Data Library retrieval ---------------------------------------------------
+  // What can you do / help
+  if (wants('help', 'what can you', 'how do i', 'nasıl')) {
+    parts.push(
+      `I can answer from your local IRIS data: MOUs and agreements, partners, student mobility, IMG/IPI assessments and gaps, partner recommendations, joint projects and research, your inbox, and any university in the database by name. I also search every document in your Data Library. Ask me things like "How many MOUs do we have?", "Which partners do you recommend?", or "What does our assessment say?"`
+    );
+  }
+
+  // --- Data Library retrieval ------------------------------------------------
   try {
     const hits = await searchLibrary(query, 3);
     if (hits.length > 0) {
       parts.push(
-        `**From your Data Library:**\n` +
+        `From your Data Library:\n` +
           hits
-            .map((h) => `• From “${h.documentTitle}”: “${h.text.slice(0, 320)}${h.text.length > 320 ? '…' : ''}”`)
+            .map((h) => `  • ${h.documentTitle}: “${h.text.slice(0, 280)}${h.text.length > 280 ? '…' : ''}”`)
             .join('\n')
       );
     }
@@ -528,13 +572,25 @@ async function aiChatLocal(body: Row): Promise<unknown> {
     // library may be empty — fine
   }
 
-  // 3. Compose ------------------------------------------------------------------
-  if (parts.length === 0) {
+  // --- Fallback: never answer with a dead end --------------------------------
+  // If nothing matched, give the institutional overview — it is almost always
+  // a useful answer, and it demonstrates what the engine knows.
+  if (parts.length === 0 && d?.uni) {
+    const r = d.assessment?.result;
     parts.push(
-      `I could not find an answer to that in your local data. The IRIS built-in engine can answer questions about: your MOUs and partnerships, student mobility, IMG/IPI assessments, partner recommendations, any university in the database (by name), and anything in documents you upload to the Data Library. Try rephrasing, or upload relevant documents to the Data Library so I can search them.`
+      `Here is what I know about ${d.uni.name} right now: ${d.activeMous.length} active MOU${d.activeMous.length === 1 ? '' : 's'} (${d.mous.length} total), ${d.partnerIds.length} partner institutions, ${d.mobility.length} mobility records (${d.incoming} in / ${d.outgoing} out)` +
+        (r
+          ? `, and a measured internationalization gap of IMG ${r.img.toFixed(3)} (${r.imgBand}).`
+          : ', with no IMG/IPI assessment on file yet.') +
+        `\n\nI could not match your question to a specific dataset — try asking about MOUs, partners, mobility, assessments, recommendations, projects, or your inbox, or upload relevant documents to the Data Library so I can search them.`
+    );
+  } else if (parts.length === 0) {
+    parts.push(
+      `Select a university in the header first, then ask me about its MOUs, partners, mobility, assessments, recommendations, projects or inbox. You can also upload documents to the Data Library and I will search them.`
     );
   }
-  parts.push(`_${ENGINE_NOTE} Connect a cloud AI in Settings for richer, free-form answers._`);
+
+  parts.push(`— ${ENGINE_NOTE} Connect a cloud AI in Settings for richer free-form answers.`);
   return { response: parts.join('\n\n') };
 }
 
