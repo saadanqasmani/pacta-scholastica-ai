@@ -357,6 +357,121 @@ export type Database = {
           },
         ]
       }
+      library_items: {
+        Row: {
+          author: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          description: string | null
+          external_url: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          item_type: string
+          shelf_id: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          description?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          item_type?: string
+          shelf_id: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          description?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          item_type?: string
+          shelf_id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_items_shelf_id_fkey"
+            columns: ["shelf_id"]
+            isOneToOne: false
+            referencedRelation: "library_shelves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_shelves: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_shared: boolean
+          name: string
+          owner_email: string | null
+          owner_id: string
+          owner_name: string | null
+          subject: string | null
+          university_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          name: string
+          owner_email?: string | null
+          owner_id: string
+          owner_name?: string | null
+          subject?: string | null
+          university_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          name?: string
+          owner_email?: string | null
+          owner_id?: string
+          owner_name?: string | null
+          subject?: string | null
+          university_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_shelves_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mobility_records: {
         Row: {
           academic_year: string
