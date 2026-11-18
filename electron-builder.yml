@@ -10,6 +10,11 @@ files:
   - dist/**/*
   - electron/**/*
   - package.json
+  # The local AI runtime ships CPU and Vulkan builds (which cover every
+  # laptop, NVIDIA included). The CUDA builds add ~575 MB and are skipped;
+  # node-llama-cpp falls back to Vulkan/CPU automatically.
+  - "!node_modules/@node-llama-cpp/*cuda*/**"
+  - "!node_modules/@node-llama-cpp/*arm64*/**"
 
 # Primary target: USB-portable single .exe — plug-and-play, no install.
 # User data is kept next to the executable (see PORTABLE_EXECUTABLE_DIR
