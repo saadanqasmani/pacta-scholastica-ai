@@ -125,7 +125,7 @@ export default function Documentation() {
 
   return (
     <div className="container py-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-foreground">{t('docs.title')}</h1><p className="text-muted-foreground">{t('docs.subtitle')}</p></div>
       </div>
 
@@ -186,12 +186,12 @@ export default function Documentation() {
                         <Accordion type="multiple" className="space-y-2">
                           {getCountryRulesForSelection().map((rule) => (
                             <AccordionItem key={rule.id} value={rule.id} className="border rounded-lg px-4">
-                              <AccordionTrigger className="hover:no-underline"><div className="flex items-center gap-3"><Stamp className="h-4 w-4 text-accent" /><span>{rule.document_name}</span></div></AccordionTrigger>
+                              <AccordionTrigger className="hover:no-underline"><div className="flex items-center gap-3"><Stamp className="h-4 w-4 text-amber-600" /><span>{rule.document_name}</span></div></AccordionTrigger>
                               <AccordionContent className="pb-4 space-y-3">
                                 {rule.specific_requirements && <div><p className="font-medium text-sm">{t('docs.specificRequirements')}:</p><p className="text-sm text-muted-foreground">{rule.specific_requirements}</p></div>}
-                                {rule.stamps_required && <div><p className="font-medium text-sm">{t('docs.stamps')}:</p><div className="flex flex-wrap gap-1 mt-1">{rule.stamps_required.map((stamp, idx) => (<Badge key={idx} variant="outline" className="text-xs bg-accent/10"><Stamp className="h-3 w-3 mr-1" />{stamp}</Badge>))}</div></div>}
+                                {rule.stamps_required && <div><p className="font-medium text-sm">{t('docs.stamps')}:</p><div className="flex flex-wrap gap-1 mt-1">{rule.stamps_required.map((stamp, idx) => (<Badge key={idx} variant="outline" className="text-xs bg-amber-500/10"><Stamp className="h-3 w-3 mr-1" />{stamp}</Badge>))}</div></div>}
                                 {rule.how_to_obtain && <div><p className="font-medium text-sm">{t('docs.howToObtain')}:</p><p className="text-sm text-muted-foreground whitespace-pre-wrap">{rule.how_to_obtain}</p></div>}
-                                {rule.notes && <div className="flex items-start gap-2 p-2 bg-accent/10 rounded-md"><Info className="h-4 w-4 text-accent shrink-0 mt-0.5" /><p className="text-sm">{rule.notes}</p></div>}
+                                {rule.notes && <div className="flex items-start gap-2 p-2 bg-amber-500/10 rounded-md"><Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" /><p className="text-sm">{rule.notes}</p></div>}
                               </AccordionContent>
                             </AccordionItem>
                           ))}
@@ -209,7 +209,7 @@ export default function Documentation() {
                           {aiRequirements.documents.map((doc, idx) => (
                             <AccordionItem key={idx} value={`ai-${idx}`} className="border rounded-lg px-4 border-primary/20">
                               <AccordionTrigger className="hover:no-underline"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary" /><span>{doc.name}</span>{doc.isRequired && <Badge className="text-xs bg-primary">{t('docs.required')}</Badge>}</div></AccordionTrigger>
-                              <AccordionContent className="pb-4 space-y-3"><p className="text-sm text-muted-foreground">{doc.description}</p>{doc.stampsRequired.length > 0 && <div><p className="font-medium text-sm">{t('docs.stamps')}:</p><div className="flex flex-wrap gap-1 mt-1">{doc.stampsRequired.map((stamp, i) => (<Badge key={i} variant="outline" className="text-xs bg-accent/10"><Stamp className="h-3 w-3 mr-1" />{stamp}</Badge>))}</div></div>}{doc.howToObtain && <div><p className="font-medium text-sm">{t('docs.howToObtain')}:</p><p className="text-sm text-muted-foreground whitespace-pre-wrap">{doc.howToObtain}</p></div>}{doc.timeline && <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4" /><span>{t('docs.timeline')}: {doc.timeline}</span></div>}{doc.notes && <div className="flex items-start gap-2 p-2 bg-accent/10 rounded-md"><AlertCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" /><p className="text-sm">{doc.notes}</p></div>}</AccordionContent>
+                              <AccordionContent className="pb-4 space-y-3"><p className="text-sm text-muted-foreground">{doc.description}</p>{doc.stampsRequired.length > 0 && <div><p className="font-medium text-sm">{t('docs.stamps')}:</p><div className="flex flex-wrap gap-1 mt-1">{doc.stampsRequired.map((stamp, i) => (<Badge key={i} variant="outline" className="text-xs bg-amber-500/10"><Stamp className="h-3 w-3 mr-1" />{stamp}</Badge>))}</div></div>}{doc.howToObtain && <div><p className="font-medium text-sm">{t('docs.howToObtain')}:</p><p className="text-sm text-muted-foreground whitespace-pre-wrap">{doc.howToObtain}</p></div>}{doc.timeline && <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4" /><span>{t('docs.timeline')}: {doc.timeline}</span></div>}{doc.notes && <div className="flex items-start gap-2 p-2 bg-amber-500/10 rounded-md"><AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" /><p className="text-sm">{doc.notes}</p></div>}</AccordionContent>
                             </AccordionItem>
                           ))}
                         </Accordion>

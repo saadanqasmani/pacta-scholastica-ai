@@ -146,8 +146,8 @@ export function AdmissionGuidelines() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-md">
-                <Info className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-md">
+                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-sm">
                   {isTR 
                     ? '18 yaşından küçükler için veli/vasi muvafakatnamesi ve veli bilgisi içeren belge (doğum belgesi vb.) gereklidir.' 

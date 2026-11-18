@@ -108,17 +108,17 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
-            <Eye className="h-8 w-8 text-primary-foreground" />
+    <div className="flex min-h-[100dvh] items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-7 animate-fade-in">
+        <div className="flex flex-col items-center space-y-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-primary via-blue-500 to-violet-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_14px_34px_-10px_hsl(var(--primary)/0.75)]">
+            <Eye className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('auth.title')}</h1>
-          <p className="text-muted-foreground">{t('auth.subtitle')}</p>
+          <h1 className="text-4xl font-semibold tracking-tight">{t('auth.title')}</h1>
+          <p className="max-w-xs text-muted-foreground">{t('auth.subtitle')}</p>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="rounded-[28px]">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center">{t('auth.welcomeBack')}</CardTitle>
             <CardDescription className="text-center">{t('auth.signInToContinue')}</CardDescription>

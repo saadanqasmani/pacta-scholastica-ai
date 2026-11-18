@@ -57,8 +57,8 @@ export function ImgIpiStrip() {
 
   if (!latest) {
     return (
-      <div className="border-b bg-primary/5">
-        <div className="container flex items-center gap-2 py-1.5 text-xs text-muted-foreground">
+      <div className="mx-auto mt-3 max-w-[1400px] px-3 md:px-4">
+        <div className="glass-pill flex flex-wrap items-center gap-2 rounded-2xl px-4 py-2 text-xs text-muted-foreground">
           <Gauge className="h-3.5 w-3.5 text-primary" />
           <span>
             This module addresses <span className="font-medium">{focus.label}</span> in the IMG/IPI
@@ -89,8 +89,8 @@ export function ImgIpiStrip() {
   }
 
   return (
-    <div className="border-b bg-primary/5">
-      <div className="container flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-xs">
+    <div className="mx-auto mt-3 max-w-[1400px] px-3 md:px-4">
+      <div className="glass-pill flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl px-4 py-2 text-xs">
         <span className="flex items-center gap-1.5 font-medium">
           <Gauge className="h-3.5 w-3.5 text-primary" />
           IMG {r.img.toFixed(3)}

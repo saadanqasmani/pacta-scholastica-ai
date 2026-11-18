@@ -307,7 +307,7 @@ export default function RegisterUniversity() {
   const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 py-8 px-4">
+    <div className="min-h-[100dvh] py-8 px-4">
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Header */}
         <div className="flex flex-col items-center space-y-2 text-center">
@@ -343,7 +343,7 @@ export default function RegisterUniversity() {
           </div>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="rounded-[28px]">
           <CardHeader>
             <CardTitle>{STEPS[currentStep - 1].title}</CardTitle>
             <CardDescription>{STEPS[currentStep - 1].description}</CardDescription>

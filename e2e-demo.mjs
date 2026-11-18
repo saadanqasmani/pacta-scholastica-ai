@@ -41,6 +41,7 @@ await page.waitForTimeout(2500);
 // 3. Dashboard shows LIVING demo data
 const body = await page.textContent('body');
 check('dashboard-loads', body.includes('IMG/IPI'));
+check('master-has-switcher', await page.locator('header button[aria-label="Select University"]').count() > 0);
 const activeMatch = await page.locator('text=Active Partnerships').first().isVisible();
 check('active-partnerships-visible', activeMatch);
 const zeros = /Active Partnerships\s*0\b/.test(body.replace(/\n/g, ' '));
@@ -97,15 +98,15 @@ if (download) {
 // 8. Ask AI answers offline with demo data
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
-await page.locator('button.fixed.bottom-6').click();
+await page.getByRole('button', { name: /ask iris/i }).click();
 await page.waitForTimeout(600);
-await page.fill('input[placeholder*="uestion"]', 'How many MOUs do we have and what does our IMG assessment say?');
+await page.fill('textarea[placeholder*="IRIS"]', 'How many MOUs do we have and what does our IMG assessment say?');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(5000);
 const chatBody = await page.textContent('body');
 check('askai-mou-count', /MOU status for/.test(chatBody));
 check('askai-imgipi', /Latest IMG\/IPI assessment/.test(chatBody));
-check('askai-engine-tag', /built-in engine/.test(chatBody));
+check('askai-engine-tag', /IRIS engine · offline/.test(chatBody));
 
 // 9. Partner recommendations page (engine, gap-conditioned)
 await page.goto(base + '/partners', { waitUntil: 'networkidle' });
@@ -216,7 +217,7 @@ await page.waitForTimeout(2500);
 const rbac = await page.evaluate(() => {
   const btns = [...document.querySelectorAll('header button')];
   return {
-    hasSwitcher: btns.some((b) => b.textContent.includes('Viewing as')),
+    hasSwitcher: !!document.querySelector('header button[aria-label="Select University"]'),
     shows: document.querySelector('header')?.innerText.includes('Warsaw'),
   };
 });

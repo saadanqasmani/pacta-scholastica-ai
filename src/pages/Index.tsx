@@ -180,7 +180,7 @@ const Index = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground">
@@ -198,7 +198,7 @@ const Index = () => {
       {/* University Info Card */}
       {selectedUniversity && (
         <Card className="border-l-4 border-l-primary">
-          <CardContent className="flex items-center gap-6 py-4">
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3 py-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
               <Building2 className="h-6 w-6 text-primary" />
             </div>
@@ -229,7 +229,7 @@ const Index = () => {
       )}
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
