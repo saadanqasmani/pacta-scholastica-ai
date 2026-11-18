@@ -10,8 +10,17 @@ import { useEffect, useState as useStateReact } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { getAIConfig, saveAIConfig, testAIConnection, AIConfig, AIProvider } from '@/lib/aiService';
+import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL } from '@/lib/claudeClient';
+import { resetDemoData } from '@/data/demoSeed';
+import { RefreshCw } from 'lucide-react';
 
 const PROVIDER_INFO: Record<Exclude<AIProvider, 'none'>, { label: string; defaultModel: string; keyHint: string; keyUrl: string }> = {
+  claude: {
+    label: 'Claude (Anthropic)',
+    defaultModel: DEFAULT_CLAUDE_MODEL,
+    keyHint: 'Create a key in the Claude Console under API keys',
+    keyUrl: 'https://platform.claude.com/settings/keys',
+  },
   gemini: {
     label: 'Google Gemini',
     defaultModel: 'gemini-2.5-flash',
@@ -246,11 +255,12 @@ export default function Settings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" /> AI assistant
+            <Sparkles className="h-5 w-5" /> Cloud AI
           </CardTitle>
           <CardDescription>
-            Optionally link ChatGPT or Google Gemini with your own API key. The key is stored only on this
-            computer. Gemini offers a free tier — recommended if you don't want to pay.
+            Link Claude with your own API key for the strongest answers, analysis and forecasts — on this
+            computer and on the IRIS phone app. The key is stored only on this device. Gemini and ChatGPT
+            are also supported.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -266,6 +276,7 @@ export default function Settings() {
                     <WifiOff className="h-4 w-4" /> IRIS built-in engine — offline (default)
                   </span>
                 </SelectItem>
+                <SelectItem value="claude">Claude (Anthropic) — recommended</SelectItem>
                 <SelectItem value="gemini">Google Gemini (free tier available)</SelectItem>
                 <SelectItem value="openai">ChatGPT (OpenAI)</SelectItem>
               </SelectContent>
@@ -289,18 +300,39 @@ export default function Settings() {
                   </a>
                 </p>
               </div>
-              <div className="space-y-1">
-                <Label>Model</Label>
-                <Input
-                  value={config.model}
-                  onChange={(e) => set('model', e.target.value)}
-                  placeholder={info.defaultModel}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave as <Badge variant="outline">{info.defaultModel}</Badge> unless you know you want a
-                  different model.
-                </p>
-              </div>
+              {config.provider === 'claude' ? (
+                <div className="space-y-1">
+                  <Label>Model</Label>
+                  <Select value={config.model || DEFAULT_CLAUDE_MODEL} onValueChange={(v) => set('model', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLAUDE_MODELS.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {CLAUDE_MODELS.find((m) => m.id === (config.model || DEFAULT_CLAUDE_MODEL))?.detail}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label>Model</Label>
+                  <Input
+                    value={config.model}
+                    onChange={(e) => set('model', e.target.value)}
+                    placeholder={info.defaultModel}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave as <Badge variant="outline">{info.defaultModel}</Badge> unless you know you want a
+                    different model.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -319,6 +351,46 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <DemoDataCard />
     </div>
+  );
+}
+
+function DemoDataCard() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <RefreshCw className="h-5 w-5" /> Demo data
+        </CardTitle>
+        <CardDescription>
+          The sample network re-dates itself automatically every 60 days. Refresh it before a demo to
+          make every date, renewal and academic year current. Records you entered yourself are never
+          changed.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await resetDemoData();
+              toast.success('Demo data refreshed — reloading…');
+              setTimeout(() => window.location.reload(), 600);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Refresh failed');
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          Refresh demo data
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

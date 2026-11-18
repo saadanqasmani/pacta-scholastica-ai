@@ -9,12 +9,19 @@
  * Dexie database instead. Response shapes match the edge functions exactly.
  */
 import { db, ensureSeeded } from '@/lib/localdb';
+import {
+  claudeComplete,
+  claudeStream,
+  describeClaudeError,
+  DEFAULT_CLAUDE_MODEL,
+  type ClaudeTurn,
+} from '@/lib/claudeClient';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-export type AIProvider = 'none' | 'gemini' | 'openai';
+export type AIProvider = 'none' | 'claude' | 'gemini' | 'openai';
 
 export interface AIConfig {
   provider: AIProvider;
@@ -25,6 +32,7 @@ export interface AIConfig {
 const CONFIG_KEY = 'iris-ai-config';
 
 const DEFAULT_MODELS: Record<Exclude<AIProvider, 'none'>, string> = {
+  claude: DEFAULT_CLAUDE_MODEL,
   gemini: 'gemini-2.5-flash',
   openai: 'gpt-4o-mini',
 };
@@ -36,7 +44,9 @@ export function getAIConfig(): AIConfig {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         const provider: AIProvider =
-          parsed.provider === 'gemini' || parsed.provider === 'openai' ? parsed.provider : 'none';
+          parsed.provider === 'claude' || parsed.provider === 'gemini' || parsed.provider === 'openai'
+            ? parsed.provider
+            : 'none';
         return {
           provider,
           apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
@@ -75,7 +85,7 @@ interface CallOptions {
 
 function resolveModel(cfg: AIConfig): string {
   if (cfg.model && cfg.model.trim()) return cfg.model.trim();
-  if (cfg.provider === 'gemini' || cfg.provider === 'openai') return DEFAULT_MODELS[cfg.provider];
+  if (cfg.provider !== 'none') return DEFAULT_MODELS[cfg.provider];
   return '';
 }
 
@@ -175,6 +185,17 @@ async function callAI(
   userPrompt: string,
   opts: CallOptions = {}
 ): Promise<string> {
+  if (cfg.provider === 'claude') {
+    // Sampling parameters (temperature) are not accepted by current Claude
+    // models; JSON shape is enforced by the prompts and parseJsonResponse.
+    return claudeComplete({
+      apiKey: cfg.apiKey,
+      model: resolveModel(cfg),
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: opts.maxTokens && opts.maxTokens > 1024 ? opts.maxTokens : 16000,
+    });
+  }
   if (cfg.provider === 'gemini') return callGemini(cfg, systemPrompt, userPrompt, opts);
   if (cfg.provider === 'openai') return callOpenAI(cfg, systemPrompt, userPrompt, opts);
   throw new Error(NOT_CONFIGURED_MESSAGE);
@@ -193,6 +214,9 @@ export async function testAIConnection(cfg: AIConfig): Promise<{ ok: boolean; me
     });
     return { ok: true, message: `Connected to ${cfg.provider} (${resolveModel(cfg)}).` };
   } catch (err) {
+    if (cfg.provider === 'claude') {
+      return { ok: false, message: await describeClaudeError(err) };
+    }
     let message = err instanceof Error ? err.message : 'Connection failed.';
     if (/429|quota|rate.?limit/i.test(message)) {
       message =
@@ -1055,6 +1079,100 @@ Format your response as a JSON object with this structure (return ONLY valid JSO
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Ask IRIS — conversational assistant
+// ---------------------------------------------------------------------------
+
+export type AskIrisSource = 'claude' | 'cloud' | 'local-llm' | 'engine';
+
+export interface AskIrisResult {
+  response: string;
+  source: AskIrisSource;
+  /** Set when a configured cloud provider failed and IRIS fell back. */
+  notice?: string;
+}
+
+const IRIS_SYSTEM_PROMPT = `You are IRIS, the intelligence layer of the International Relations Intelligent System — software that international offices at universities use to manage partnerships, MOUs, student mobility and recruitment.
+
+How you work:
+- Ground every answer in the CONTEXT block attached to the user's latest message: the institution's live data, its IMG/IPI assessment and forecasts, and passages retrieved from its Data Library (institutional documents and a curated literature collection on internationalization).
+- Frame advice through the IMG/IPI framework when it is relevant: IMG measures the internationalization gap across Information Asymmetry (IA), Workflow Fragmentation (WF) and Digital Infrastructure Deficit (DID); IPI measures capacity to respond through Leadership Commitment (LC) and faculty Readiness (RF). Refer to the institution's quadrant and its forecast deltas when recommending priorities.
+- When a recommendation draws on a publication in the context, name it briefly, e.g. (Knight, 2004) or (Erasmus+ Programme Guide). Only cite works that appear in the context.
+- Never invent numbers, institutions or citations. If the context lacks what the question needs, say what is missing and which IRIS module would provide it.
+- Be concise and practical. Write plain text: short paragraphs and lists that start with "- ". Do not use markdown headings, bold or tables.
+- Reply in the same language the user writes in.`;
+
+/**
+ * Answer a chat question. Order: Claude (streamed, with conversation memory)
+ * or another linked cloud provider → the offline local model (desktop) →
+ * the built-in engine. Never throws; always returns an answer.
+ */
+export async function askIris(
+  body: Row & { history?: { role: 'user' | 'assistant'; content: string }[] },
+  onText?: (delta: string) => void
+): Promise<AskIrisResult> {
+  const cfg = getAIConfig();
+  const online = typeof navigator === 'undefined' || navigator.onLine;
+  const question = String(body.message ?? '').trim();
+  const universityId = body.university_id ? String(body.university_id) : null;
+  let notice: string | undefined;
+
+  if (cfg.provider === 'claude' && cfg.apiKey && online) {
+    try {
+      const { buildChatContext } = await import('@/lib/localEngine');
+      const context = await buildChatContext(universityId, question);
+      const history: ClaudeTurn[] = (body.history ?? [])
+        .filter((t) => t.content?.trim())
+        .slice(-10)
+        .map((t) => ({ role: t.role, content: t.content }));
+      // The API requires the conversation to start with a user turn.
+      while (history.length && history[0].role !== 'user') history.shift();
+      const messages: ClaudeTurn[] = [
+        ...history,
+        {
+          role: 'user',
+          content: `CONTEXT (live IRIS data — current institution: ${String(body.university_name ?? 'not selected')}):\n${context}\n\nQUESTION: ${question}`,
+        },
+      ];
+      const req = {
+        apiKey: cfg.apiKey,
+        model: resolveModel(cfg),
+        system: IRIS_SYSTEM_PROMPT,
+        messages,
+        maxTokens: 16000,
+      };
+      const response = onText ? await claudeStream(req, onText) : await claudeComplete(req);
+      return { response, source: 'claude' };
+    } catch (err) {
+      notice = await describeClaudeError(err);
+      console.warn('[IRIS] Claude failed for Ask IRIS, falling back:', err);
+    }
+  } else if (cfg.provider !== 'none' && cfg.provider !== 'claude' && cfg.apiKey && online) {
+    try {
+      const data = (await aiChat(cfg, body)) as { response: string };
+      if (data?.response) return { response: data.response, source: 'cloud' };
+    } catch (err) {
+      notice = err instanceof Error ? err.message : 'Cloud AI request failed.';
+      console.warn('[IRIS] Cloud AI failed for Ask IRIS, falling back:', err);
+    }
+  }
+
+  try {
+    const { isLocalLLMAvailable, askLocalLLM } = await import('@/lib/localLLM');
+    if (await isLocalLLMAvailable()) {
+      const response = await askLocalLLM(question, universityId);
+      if (response) return { response, source: 'local-llm', notice };
+    }
+  } catch (err) {
+    console.warn('[IRIS] Local LLM failed for Ask IRIS, using built-in engine:', err);
+  }
+
+  const { runLocalEngine } = await import('@/lib/localEngine');
+  const data = (await runLocalEngine('ai-chat', body)) as { response: string };
+  return { response: data.response, source: 'engine', notice };
+}
+
 // ---------------------------------------------------------------------------
 // Dispatcher
 // ---------------------------------------------------------------------------
@@ -1084,6 +1202,10 @@ export async function invokeLocalFunction(
   name: string,
   body: Record<string, unknown>
 ): Promise<{ data: unknown; error: { message: string } | null }> {
+  if (name === 'ai-chat') {
+    const result = await askIris(body || {});
+    return { data: { response: result.response }, error: null };
+  }
   const cfg = getAIConfig();
   const cloudConfigured =
     cfg.provider !== 'none' &&
@@ -1102,23 +1224,6 @@ export async function invokeLocalFunction(
         // (quota errors, network hiccups, model changes, parse failures).
         console.warn(`[IRIS] Cloud AI failed for "${name}", using built-in engine:`, err);
       }
-    }
-  }
-
-  // Local LLM (real language model running fully offline in the desktop
-  // app) — chat only. Any failure falls through to the built-in engine.
-  if (name === 'ai-chat') {
-    try {
-      const { isLocalLLMAvailable, askLocalLLM } = await import('@/lib/localLLM');
-      if (await isLocalLLMAvailable()) {
-        const response = await askLocalLLM(
-          String((body || {}).message ?? ''),
-          body?.university_id ? String(body.university_id) : null
-        );
-        if (response) return { data: { response }, error: null };
-      }
-    } catch (err) {
-      console.warn('[IRIS] Local LLM failed for "ai-chat", using built-in engine:', err);
     }
   }
 
