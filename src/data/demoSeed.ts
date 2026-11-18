@@ -14,7 +14,8 @@
 import { db, newId } from '@/lib/localdb';
 import { computeIMGIPI, IMGIPIInputs } from '@/lib/imgIpi';
 import { chunkText } from '@/lib/libraryIndex';
-import { LITERATURE_LIBRARY } from '@/data/literatureLibrary';
+import { LITERATURE_LIBRARY, type LiteratureEntry } from '@/data/literatureLibrary';
+import { LITERATURE_UPDATES_2026 } from '@/data/literatureUpdates2026';
 import { academicYearStart } from '@/lib/academicYear';
 
 export const HOME_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
@@ -779,12 +780,15 @@ async function seedUniversityBriefs(): Promise<void> {
  *  and international office practice, ingested into the Data Library — so
  *  library search and Ask IRIS can answer questions from the scholarly and
  *  policy record, not just institutional data. */
-async function seedLiterature(): Promise<void> {
+async function seedLiterature(
+  entries: LiteratureEntry[] = LITERATURE_LIBRARY,
+  createdAt: string = iso(2026, 7, 1)
+): Promise<void> {
   const rows: Record<string, unknown>[] = [];
   const chunkRows: Record<string, unknown>[] = [];
-  const now = iso(2026, 7, 1);
+  const now = createdAt;
 
-  for (const entry of LITERATURE_LIBRARY) {
+  for (const entry of entries) {
     const text = `${entry.title} (${entry.authors}, ${entry.year}). ${entry.source}. ${entry.access}. ${entry.summary}${entry.url ? ' Available at: ' + entry.url : ''}`;
     const docId = `lit-${entry.id}`;
     const chunks = chunkText(text);
@@ -907,6 +911,20 @@ export async function ensureDemoData(): Promise<void> {
       university_id: 'system',
       evaluation_type: 'seed-marker',
       evaluation_data: { version: 4 },
+      created_at: new Date().toISOString(),
+      expires_at: '2099-01-01T00:00:00Z',
+    });
+  }
+  // v6: verified 2025–2026 policy and data developments (visa rules, caps,
+  // Erasmus+ futures, national strategies) in the same literature format.
+  const marker6 = await db.ai_evaluations.get('iris-demo-seed-v6');
+  if (!marker6) {
+    await seedLiterature(LITERATURE_UPDATES_2026, iso(2026, 11, 18));
+    await db.ai_evaluations.put({
+      id: 'iris-demo-seed-v6',
+      university_id: 'system',
+      evaluation_type: 'seed-marker',
+      evaluation_data: { version: 6 },
       created_at: new Date().toISOString(),
       expires_at: '2099-01-01T00:00:00Z',
     });
