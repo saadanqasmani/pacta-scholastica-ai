@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { syncStatusBar } from '@/lib/nativeShell';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import {
@@ -197,6 +198,10 @@ function UserMenu() {
 
 export function Header() {
   const { pathname } = useLocation();
+  const { resolvedTheme } = useTheme();
+  useEffect(() => {
+    void syncStatusBar(resolvedTheme === 'dark');
+  }, [resolvedTheme]);
   const { selectedUniversity, isMaster } = useUniversity();
   const active = groupForPath(pathname);
 

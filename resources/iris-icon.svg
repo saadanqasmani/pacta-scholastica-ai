@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.55" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.3" cy="0.15" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.38"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="iris" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e0f2fe"/>
+      <stop offset="0.6" stop-color="#7dd3fc"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </radialGradient>
+  </defs>
+  <g id="bgshape">
+    <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+    <rect width="1024" height="1024" rx="232" fill="url(#sheen)"/>
+  </g>
+  <g id="glyph">
+    <!-- eye outline -->
+    <path d="M152 512 C 272 316, 752 316, 872 512 C 752 708, 272 708, 152 512 Z" fill="none" stroke="#ffffff" stroke-width="54" stroke-linejoin="round"/>
+    <!-- iris -->
+    <circle cx="512" cy="512" r="128" fill="url(#iris)"/>
+    <circle cx="512" cy="512" r="128" fill="none" stroke="#ffffff" stroke-width="18" stroke-opacity="0.85"/>
+    <!-- pupil + catchlight -->
+    <circle cx="512" cy="512" r="52" fill="#1e1b4b"/>
+    <circle cx="548" cy="474" r="22" fill="#ffffff"/>
+  </g>
+</svg>

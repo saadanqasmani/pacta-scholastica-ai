@@ -1,0 +1,103 @@
+# Builds IRIS for Windows (portable .exe) and Android (.apk) on every push,
+# then publishes both to the "demo-latest" GitHub Release.
+name: Build IRIS apps
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Package portable .exe
+        run: npx electron-builder --win portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iris-windows
+          path: release/*.exe
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - name: Sync web build into the Android project
+        run: npx cap sync android
+
+      # Stable release signing when the repository secret exists, so each
+      # new APK installs as an update (keeping the app's data). Without it,
+      # the APK is signed with a per-build debug key.
+      - name: Build signed release APK
+        if: env.KEYSTORE_B64 != ''
+        working-directory: android
+        env:
+          IRIS_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          IRIS_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          IRIS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/iris.keystore"
+          export IRIS_KEYSTORE_PATH="$RUNNER_TEMP/iris.keystore"
+          ./gradlew assembleRelease --no-daemon
+          mkdir -p ../release && cp app/build/outputs/apk/release/app-release.apk ../release/IRIS-android.apk
+
+      - name: Build APK (debug-signed)
+        if: env.KEYSTORE_B64 == ''
+        working-directory: android
+        run: |
+          ./gradlew assembleDebug --no-daemon
+          mkdir -p ../release && cp app/build/outputs/apk/debug/app-debug.apk ../release/IRIS-android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iris-android
+          path: release/IRIS-android.apk
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-apps
+          merge-multiple: true
+      - name: Publish "demo-latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: demo-latest
+          name: IRIS (latest build)
+          body: |
+            Latest automated build of IRIS.
+
+            **Windows** — download `IRIS-0.1.0-portable.exe`, double-click, done. First run: SmartScreen → "More info" → "Run anyway".
+
+            **Android** — open this page on your phone, download `IRIS-android.apk`, tap it, and allow installing from your browser when Android asks. Then open IRIS.
+
+            AI: Settings → Cloud AI → Claude, paste your API key (stored only on that device).
+          prerelease: true
+          files: dist-apps/*
