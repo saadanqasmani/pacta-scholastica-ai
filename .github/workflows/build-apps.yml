@@ -44,6 +44,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          # Reuse downloaded Gradle/Maven dependencies between runs
+          # (fewer requests to Maven Central, faster builds).
+          cache: gradle
       - run: npm ci
       - run: npm run build
       - name: Sync web build into the Android project
@@ -62,14 +65,24 @@ jobs:
         run: |
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/iris.keystore"
           export IRIS_KEYSTORE_PATH="$RUNNER_TEMP/iris.keystore"
-          ./gradlew assembleRelease --no-daemon
+          for attempt in 1 2 3; do
+            ./gradlew assembleRelease --no-daemon && break
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            echo "Gradle attempt $attempt failed (often a transient download error); retrying in $((attempt * 45))s"
+            sleep $((attempt * 45))
+          done
           mkdir -p ../release && cp app/build/outputs/apk/release/app-release.apk ../release/IRIS-android.apk
 
       - name: Build APK (debug-signed)
         if: env.KEYSTORE_B64 == ''
         working-directory: android
         run: |
-          ./gradlew assembleDebug --no-daemon
+          for attempt in 1 2 3; do
+            ./gradlew assembleDebug --no-daemon && break
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            echo "Gradle attempt $attempt failed (often a transient download error); retrying in $((attempt * 45))s"
+            sleep $((attempt * 45))
+          done
           mkdir -p ../release && cp app/build/outputs/apk/debug/app-debug.apk ../release/IRIS-android.apk
 
       - uses: actions/upload-artifact@v4
