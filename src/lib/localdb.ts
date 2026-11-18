@@ -44,6 +44,8 @@ export class IrisDB extends Dexie {
   library_chunks!: Table<Record<string, unknown>, string>;
   img_ipi_assessments!: Table<Record<string, unknown>, string>;
   meeting_leads!: Table<Record<string, unknown>, string>;
+  library_shelves!: Table<Record<string, unknown>, string>;
+  library_shelf_items!: Table<Record<string, unknown>, string>;
 
   constructor() {
     super('iris-local-db');
@@ -81,6 +83,11 @@ export class IrisDB extends Dexie {
     // v2 — Meeting Radar: leads found by scanning the connected work mailbox.
     this.version(2).stores({
       meeting_leads: 'id, university_id, email_date, status',
+    });
+    // v3 — Library shelves: named collections of documents, links and notes.
+    this.version(3).stores({
+      library_shelves: 'id, owner_id, created_at',
+      library_shelf_items: 'id, shelf_id, document_id, created_at',
     });
   }
 }

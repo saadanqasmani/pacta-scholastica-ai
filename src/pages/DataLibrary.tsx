@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUniversity } from '@/contexts/UniversityContext';
+import { ShelvesPanel } from '@/components/library/ShelvesPanel';
+import { BookMarked } from 'lucide-react';
 import {
   ingestFile,
   listDocuments,
@@ -126,10 +128,18 @@ export default function DataLibrary() {
           <TabsTrigger value="ask">
             <HelpCircle className="h-4 w-4 mr-1" /> Ask the library
           </TabsTrigger>
+          <TabsTrigger value="shelves">
+            <BookMarked className="h-4 w-4 mr-1" /> Shelves
+          </TabsTrigger>
           <TabsTrigger value="documents">
             <FileText className="h-4 w-4 mr-1" /> Documents ({documents.length})
           </TabsTrigger>
         </TabsList>
+
+        {/* ------------------------------- SHELVES ------------------------------- */}
+        <TabsContent value="shelves">
+          <ShelvesPanel />
+        </TabsContent>
 
         {/* -------------------------------- ASK -------------------------------- */}
         <TabsContent value="ask" className="space-y-4">

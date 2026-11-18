@@ -245,10 +245,10 @@ export default function Settings() {
       <Card className="border-l-4 border-l-primary">
         <CardContent className="py-3 flex items-center gap-2 text-sm">
           <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-          IRIS has its own built-in analysis engine: every AI feature (Ask AI, health analysis, partner
-          recommendations, MOU suggestions) works completely offline using your local data. Connecting a
-          cloud provider below is optional — it upgrades the answers when you have internet, and IRIS
-          automatically falls back to the built-in engine whenever the cloud is unavailable.
+          Every AI feature (Ask IRIS, health analysis, partner recommendations, MOU suggestions, forecasts)
+          works offline with IRIS's built-in engine. Link Claude below for expert-level answers whenever
+          you are online — on this device and in the IRIS phone app. If the connection drops, IRIS falls
+          back to the built-in engine automatically.
         </CardContent>
       </Card>
 

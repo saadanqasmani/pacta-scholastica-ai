@@ -173,6 +173,23 @@ await page.keyboard.press('Enter');
 await page.waitForTimeout(1500);
 check('library-upload-searchable', /zephyr-42/.test(await page.textContent('body')));
 
+// Shelves: starter shelves exist; create a shelf and add a note through the UI
+await page.getByRole('tab', { name: /shelves/i }).click();
+await page.waitForTimeout(1500);
+check('starter-shelves', /Erasmus\+ essentials/.test(await page.textContent('body')));
+await page.getByRole('button', { name: /new shelf/i }).click();
+await page.fill('input[placeholder="e.g. Partner due diligence"]', 'E2E Shelf');
+await page.getByRole('button', { name: /save shelf/i }).click();
+await page.waitForTimeout(1000);
+await page.getByText('E2E Shelf', { exact: true }).click();
+await page.waitForTimeout(800);
+await page.getByRole('tab', { name: /^note$/i }).click();
+await page.fill('[role="dialog"] input[placeholder="Title"]', 'E2E shelf note');
+await page.getByRole('button', { name: /add note/i }).click();
+await page.waitForTimeout(800);
+check('shelf-note-added', /E2E shelf note/.test(await page.locator('[role="dialog"]').innerText()));
+await page.keyboard.press('Escape');
+
 // Everything persists across a full reload
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 await page.waitForTimeout(2500);
@@ -180,14 +197,15 @@ const persist = await page.evaluate(() => new Promise((resolve) => {
   const req = indexedDB.open('iris-local-db');
   req.onsuccess = () => {
     const db = req.result; const out = {};
-    const tx = db.transaction(['universities', 'img_ipi_assessments', 'library_documents']);
+    const tx = db.transaction(['universities', 'img_ipi_assessments', 'library_documents', 'library_shelves']);
     tx.objectStore('universities').count().onsuccess = (e) => (out.u = e.target.result);
     tx.objectStore('img_ipi_assessments').count().onsuccess = (e) => (out.a = e.target.result);
     tx.objectStore('library_documents').count().onsuccess = (e) => (out.d = e.target.result);
+    tx.objectStore('library_shelves').count().onsuccess = (e) => (out.s = e.target.result);
     tx.oncomplete = () => resolve(out);
   };
 }));
-check('persistence-after-reload', persist.u >= 80 && persist.a >= 80 && persist.d >= 83, JSON.stringify(persist));
+check('persistence-after-reload', persist.u >= 80 && persist.a >= 80 && persist.d >= 83 && persist.s >= 4, JSON.stringify(persist));
 check('agenda-card-renders', /Automated agenda/.test(await page.textContent('body')));
 
 // RBAC: a SECOND account must be university-scoped (no switcher)
