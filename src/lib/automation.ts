@@ -9,6 +9,7 @@
  */
 import { db, ensureSeeded } from '@/lib/localdb';
 import type { IMGIPIResult } from '@/lib/imgIpi';
+import { currentAcademicYear } from '@/lib/academicYear';
 
 export interface ActionItem {
   id: string;
@@ -83,18 +84,33 @@ export async function computeActionItems(universityId: string): Promise<ActionIt
       .filter((i) => now - new Date(String(i.meeting_date ?? i.created_at)).getTime() < 365 * DAY)
       .map((i) => String(i.partner_university_id))
   );
-  for (const m of mous.filter((m) => m.status === 'accepted')) {
-    const pid = String(partnerOf(m));
-    if (!interactedPartnerIds.has(pid)) {
-      items.push({
-        id: `stale-${pid}`,
-        kind: 'stale_partner',
-        severity: 'low',
-        title: `No recorded contact with ${nameOf(pid)} in the past year`,
-        detail: 'Schedule a coordination call and log it in Partnership Management to keep the agreement alive.',
-        route: '/partnerships',
-      });
-    }
+  const silent = [
+    ...new Set(
+      mous
+        .filter((m) => m.status === 'accepted')
+        .map((m) => String(partnerOf(m)))
+        .filter((pid) => !interactedPartnerIds.has(pid))
+    ),
+  ];
+  if (silent.length === 1) {
+    items.push({
+      id: `stale-${silent[0]}`,
+      kind: 'stale_partner',
+      severity: 'low',
+      title: `No recorded contact with ${nameOf(silent[0])} in the past year`,
+      detail: 'Schedule a coordination call and log it in Partnership Management to keep the agreement alive.',
+      route: '/partnerships',
+    });
+  } else if (silent.length > 1) {
+    const names = silent.map(nameOf);
+    items.push({
+      id: 'stale-group',
+      kind: 'stale_partner',
+      severity: silent.length >= 5 ? 'medium' : 'low',
+      title: `${silent.length} partners with no recorded contact in the past year`,
+      detail: `${names.slice(0, 4).join(', ')}${names.length > 4 ? ` and ${names.length - 4} more` : ''}. Silent agreements quietly lapse — log a check-in with each.`,
+      route: '/partnerships',
+    });
   }
 
   // 4. Unanswered partnership requests.
@@ -113,7 +129,8 @@ export async function computeActionItems(universityId: string): Promise<ActionIt
   }
 
   // 5. Mobility imbalance this academic year.
-  const thisYear = mobility.filter((m) => m.academic_year === '2025-2026');
+  const ay = currentAcademicYear();
+  const thisYear = mobility.filter((m) => m.academic_year === ay);
   const inc = thisYear.filter((m) => m.direction === 'incoming').reduce((a, m) => a + Number(m.student_count || 0), 0);
   const out = thisYear.filter((m) => m.direction === 'outgoing').reduce((a, m) => a + Number(m.student_count || 0), 0);
   if (inc + out >= 10 && Math.abs(inc - out) / Math.max(inc, out) > 0.4) {
@@ -121,7 +138,7 @@ export async function computeActionItems(universityId: string): Promise<ActionIt
       id: 'imbalance',
       kind: 'imbalance',
       severity: 'medium',
-      title: `Mobility imbalance: ${inc} incoming vs ${out} outgoing (2025–2026)`,
+      title: `Mobility imbalance: ${inc} incoming vs ${out} outgoing (${ay.replace('-', '–')})`,
       detail:
         inc > out
           ? 'Reciprocity risk: partners sending more than they receive will renegotiate. Promote outgoing calls.'

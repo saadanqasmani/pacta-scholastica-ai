@@ -297,6 +297,11 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Recruitment
     'recruitment.title': 'Recruitment',
+    'recruitment.dataConsistent': 'Data is consistent',
+    'recruitment.dataInconsistency': 'Data inconsistency detected between tabs',
+    'recruitment.autoFix': 'Auto-fix',
+    'recruitment.consistencyFixed': 'Consistency restored',
+    'recruitment.consistencyFixedDesc': 'All recruitment tabs now reconcile to the same registered total.',
     'recruitment.subtitle': 'International student recruitment tracking and market intelligence',
     'recruitment.selectUniversity': 'Please select a university to view recruitment data.',
     'recruitment.editNumbers': 'Edit Numbers',
@@ -820,6 +825,11 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Recruitment
     'recruitment.title': 'Öğrenci İşe Alım',
+    'recruitment.dataConsistent': 'Veriler tutarlı',
+    'recruitment.dataInconsistency': 'Sekmeler arasında veri tutarsızlığı tespit edildi',
+    'recruitment.autoFix': 'Otomatik düzelt',
+    'recruitment.consistencyFixed': 'Tutarlılık sağlandı',
+    'recruitment.consistencyFixedDesc': 'Tüm işe alım sekmeleri artık aynı kayıtlı öğrenci toplamıyla uyumlu.',
     'recruitment.subtitle': 'Uluslararası öğrenci işe alım takibi ve pazar analizi',
     'recruitment.selectUniversity': 'İşe alım verilerini görüntülemek için lütfen bir üniversite seçin.',
     'recruitment.editNumbers': 'Sayıları Düzenle',

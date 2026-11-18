@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { currentAcademicYear } from '@/lib/academicYear';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -223,7 +224,7 @@ export function StudentMobilityTracking() {
   const [newStudentId, setNewStudentId] = useState('');
   const [newHostUniversity, setNewHostUniversity] = useState('');
   const [newProgramType, setNewProgramType] = useState('erasmus');
-  const [newAcademicYear, setNewAcademicYear] = useState('2025-2026');
+  const [newAcademicYear, setNewAcademicYear] = useState(currentAcademicYear());
   const [newSemester, setNewSemester] = useState('fall');
 
   useEffect(() => {
@@ -492,7 +493,7 @@ export function StudentMobilityTracking() {
     setNewStudentId('');
     setNewHostUniversity('');
     setNewProgramType('erasmus');
-    setNewAcademicYear('2025-2026');
+    setNewAcademicYear(currentAcademicYear());
     setNewSemester('fall');
   };
 
@@ -647,7 +648,7 @@ export function StudentMobilityTracking() {
               </div>
               <div className="space-y-2">
                 <Label>Academic Year</Label>
-                <Input value={newAcademicYear} onChange={e => setNewAcademicYear(e.target.value)} placeholder="2025-2026" />
+                <Input value={newAcademicYear} onChange={e => setNewAcademicYear(e.target.value)} placeholder={currentAcademicYear()} />
               </div>
               <Button className="w-full" onClick={createApplication} disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}

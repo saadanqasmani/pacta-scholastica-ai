@@ -15,6 +15,7 @@ import { db, newId } from '@/lib/localdb';
 import { computeIMGIPI, IMGIPIInputs } from '@/lib/imgIpi';
 import { chunkText } from '@/lib/libraryIndex';
 import { LITERATURE_LIBRARY } from '@/data/literatureLibrary';
+import { academicYearStart } from '@/lib/academicYear';
 
 export const HOME_ID = '54dfc8d0-8e29-4ef8-ace4-147df5c9557d';
 
@@ -29,8 +30,20 @@ function h01(s: string): number {
 }
 
 const pick = <T,>(arr: T[], seed: string): T => arr[Math.floor(h01(seed) * arr.length) % arr.length];
+// The demo narrative was authored with "today" = 20 June 2026. Every date is
+// shifted by (now − that reference) at seed time, so the demo always reads
+// as current: renewals due soon, recent meetings, this year's mobility.
+const DEMO_REFERENCE = Date.UTC(2026, 5, 20, 10, 0, 0);
+const SHIFT_MS = Math.max(0, Date.now() - DEMO_REFERENCE);
 const iso = (y: number, m: number, d: number) =>
-  new Date(Date.UTC(y, m - 1, d, 10, 0, 0)).toISOString();
+  new Date(Date.UTC(y, m - 1, d, 10, 0, 0) + SHIFT_MS).toISOString();
+/** Whole academic years elapsed since the reference (2025-2026). */
+const AY_SHIFT = Math.max(0, academicYearStart() - 2025);
+/** Shift an authored academic-year label ("2025-2026") to the present. */
+const ayLabel = (label: string) => {
+  const [a, b] = label.split('-').map(Number);
+  return `${a + AY_SHIFT}-${b + AY_SHIFT}`;
+};
 
 // The home institution's partner network for the demo (mix of Turkish and
 // international, chosen for a realistic mid-size private university).
@@ -124,7 +137,7 @@ async function seedHomeNetwork(): Promise<void> {
           program_type: pick(PROGRAMS, seed),
           direction,
           student_count: 2 + Math.floor(v * 9),
-          academic_year: year,
+          academic_year: ayLabel(year),
           completion_status: year === '2025-2026' ? 'ongoing' : 'completed',
           created_at: iso(startYear, 9, 15),
         });
@@ -140,7 +153,7 @@ async function seedHomeNetwork(): Promise<void> {
         id: `demo-roi-${seed}`,
         university_id: HOME_ID,
         partner_university_id: p.id,
-        partnership_year: year,
+        partnership_year: year + AY_SHIFT,
         student_exchange_count: 4 + Math.floor(v * 14),
         research_collaborations: Math.floor(v * 3),
         joint_publications: Math.floor(v * 5),
@@ -506,7 +519,7 @@ async function seedCrossOperational(): Promise<void> {
             program_type: pick(PROGRAMS, seed),
             direction,
             student_count: 1 + Math.floor(v * 7),
-            academic_year: year,
+            academic_year: ayLabel(year),
             completion_status: year === '2025-2026' ? 'ongoing' : 'completed',
             created_at: iso(Number(year.slice(0, 4)), 9, 20),
           });
@@ -518,7 +531,7 @@ async function seedCrossOperational(): Promise<void> {
         id: `demo-xroi-${mouId}-${self}`,
         university_id: self,
         partner_university_id: other,
-        partnership_year: 2025,
+        partnership_year: 2025 + AY_SHIFT,
         student_exchange_count: 2 + Math.floor(rv * 10),
         research_collaborations: Math.floor(rv * 3),
         joint_publications: Math.floor(rv * 4),
@@ -619,13 +632,13 @@ async function seedCrossOperational(): Promise<void> {
 /** Pre-load the Data Library with realistic institutional documents so
  *  Ask AI and library search have content out of the box. */
 async function seedLibrary(): Promise<void> {
-  if ((await db.library_documents.count()) > 0) return;
+  if (await db.library_documents.get('demo-handbook-partnership-handbook.md')) return;
 
   const DOCS: { title: string; filename: string; text: string }[] = [
     {
       title: 'International Partnership Handbook — İstanbul Nişantaşı University',
       filename: 'partnership-handbook.md',
-      text: `International Partnership Handbook. İstanbul Nişantaşı University, International Relations Office, 2026 edition.
+      text: `International Partnership Handbook. İstanbul Nişantaşı University, International Relations Office, ${2026 + AY_SHIFT} edition.
 Partner nominations: partner universities must submit student nominations by 15 May for the fall semester and 15 October for the spring semester. Late nominations are accepted only with written approval from the International Relations Office director.
 Tuition policy: exchange students under a bilateral MOU or Erasmus+ agreement pay tuition only to their home institution. No tuition fees are charged by Nişantaşı to incoming exchange students.
 Credit recognition: all exchange study is governed by a Learning Agreement signed before mobility begins. Credits are recognized using ECTS. A minimum of 30 ECTS per semester constitutes a full study load.
@@ -647,13 +660,13 @@ Reporting: participants must complete the EU Survey within 30 days of completing
 Recognition: full academic recognition of satisfactorily completed mobility is mandatory, using ECTS and the Learning Agreement.`,
     },
     {
-      title: 'International Student Admission Requirements 2026',
-      filename: 'admission-requirements-2026.txt',
-      text: `International student admission requirements, 2026 intake.
+      title: `International Student Admission Requirements ${2026 + AY_SHIFT}`,
+      filename: 'admission-requirements.txt',
+      text: `International student admission requirements, ${2026 + AY_SHIFT} intake.
 Undergraduate applicants must provide: a high school diploma (attested by apostille for Hague Convention countries, or Ministry of Foreign Affairs plus Turkish Consulate attestation otherwise), a complete official transcript, a valid passport copy, two biometric photographs, and a completed application form.
 Diploma equivalency: a Denklik (equivalency) certificate from the Turkish Ministry of National Education is required before final registration. Applications can be started online through the e-Denklik system and typically take 4 to 12 weeks.
 Language requirements: programmes taught in Turkish require TÖMER C1 or completion of the university's Turkish preparatory year. Programmes taught in English require B2 proficiency, demonstrated by TOEFL iBT 72, IELTS 5.5 (specific programmes may require higher), or the university's own English proficiency examination.
-Application deadlines: early admission closes 30 April 2026; regular admission closes 31 July 2026; late applications are considered until 5 September 2026 subject to quota availability.
+Application deadlines: early admission closes 30 April ${2026 + AY_SHIFT}; regular admission closes 31 July ${2026 + AY_SHIFT}; late applications are considered until 5 September ${2026 + AY_SHIFT} subject to quota availability.
 Tuition deposits: admitted students confirm their place with a 500 USD deposit, deducted from first-semester tuition. The deposit is refundable only if a student visa is refused, upon presentation of the refusal letter.
 Scholarships: merit scholarships between 25 and 100 percent of tuition are available based on academic standing; applications are automatic with admission. Sibling and early-payment discounts cannot be combined with merit scholarships above 50 percent.
 Residence permits: after arrival, students must apply for a student residence permit (ikamet) within 30 days through e-ikamet, with university enrollment certificate and valid health insurance.`,
@@ -662,7 +675,7 @@ Residence permits: after arrival, students must apply for a student residence pe
 
   const now = iso(2026, 5, 10);
   for (const doc of DOCS) {
-    const docId = newId();
+    const docId = `demo-handbook-${doc.filename}`;
     const chunks = chunkText(doc.text);
     await db.library_documents.add({
       id: docId,
@@ -792,9 +805,66 @@ async function seedLiterature(): Promise<void> {
   await db.library_chunks.bulkPut(chunkRows as { id: string }[]);
 }
 
+
+// ---------------------------------------------------------------------------
+// Freshness: demo records are re-dated when they grow stale, so the agenda,
+// renewals and "this year" figures always read as current. Only rows created
+// by this generator (ids prefixed "demo-") are touched — never user data.
+// ---------------------------------------------------------------------------
+const DEMO_TABLES = [
+  'mous',
+  'mobility_records',
+  'partner_roi',
+  'partner_projects',
+  'partnership_interactions',
+  'research_collaborations',
+  'partner_requests',
+  'partner_messages',
+  'img_ipi_assessments',
+] as const;
+const LEGACY_HANDBOOK_FILES = new Set([
+  'partnership-handbook.md',
+  'erasmus-ka171-guide.md',
+  'admission-requirements-2026.txt',
+  'admission-requirements.txt',
+]);
+const REFRESH_AFTER_MS = 60 * 24 * 60 * 60 * 1000;
+const FRESHNESS_MARKER = 'iris-demo-seed-v5';
+
+async function clearDemoRecords(): Promise<void> {
+  for (const name of DEMO_TABLES) {
+    await db[name].filter((r) => String(r.id).startsWith('demo-')).delete();
+  }
+  const docs = await db.library_documents
+    .filter(
+      (d) =>
+        String(d.id).startsWith('demo-') ||
+        (d.university_id === HOME_ID && LEGACY_HANDBOOK_FILES.has(String(d.filename)))
+    )
+    .toArray();
+  const ids = new Set(docs.map((d) => String(d.id)));
+  await db.library_chunks.filter((c) => ids.has(String(c.document_id))).delete();
+  await db.storage_files
+    .filter((f) => f.bucket === 'library' && ids.has(f.path.split('/')[0]))
+    .delete();
+  await db.library_documents.bulkDelete([...ids]);
+  await db.ai_evaluations.bulkDelete(['iris-demo-seed-v2', 'iris-demo-seed-v3', FRESHNESS_MARKER]);
+}
+
+/** Re-date the whole demo dataset to today (Settings → "Refresh demo data"). */
+export async function resetDemoData(): Promise<void> {
+  await clearDemoRecords();
+  await ensureDemoData();
+}
+
 /** Idempotent entry point — fills only what is missing, never user data. */
 export async function ensureDemoData(): Promise<void> {
-  if ((await db.mous.count()) === 0) {
+  const freshness = await db.ai_evaluations.get(FRESHNESS_MARKER);
+  const stale =
+    !freshness || Date.now() - Date.parse(String(freshness.created_at)) > REFRESH_AFTER_MS;
+  if (stale) await clearDemoRecords();
+
+  if (!(await db.mous.get('demo-mou-int-warsaw'))) {
     await seedHomeNetwork();
     await seedCrossNetwork();
   }
@@ -837,6 +907,16 @@ export async function ensureDemoData(): Promise<void> {
       university_id: 'system',
       evaluation_type: 'seed-marker',
       evaluation_data: { version: 4 },
+      created_at: new Date().toISOString(),
+      expires_at: '2099-01-01T00:00:00Z',
+    });
+  }
+  if (stale) {
+    await db.ai_evaluations.put({
+      id: FRESHNESS_MARKER,
+      university_id: 'system',
+      evaluation_type: 'seed-marker',
+      evaluation_data: { version: 5, reference: new Date().toISOString() },
       created_at: new Date().toISOString(),
       expires_at: '2099-01-01T00:00:00Z',
     });
