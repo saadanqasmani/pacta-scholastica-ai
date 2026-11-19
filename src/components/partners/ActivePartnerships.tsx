@@ -725,8 +725,8 @@ export function ActivePartnerships() {
             return (
               <Card key={group.partner.id} className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50" onClick={() => setSelectedPartner(group)}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex min-w-0 flex-1 basis-60 items-center gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-secondary">
                         <Building2 className="h-6 w-6 text-muted-foreground" />
                       </div>
@@ -750,7 +750,7 @@ export function ActivePartnerships() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       <div className="text-right text-sm">
                         <p><span className="font-medium">{group.completedMeetings}</span> <span className="text-muted-foreground">completed</span></p>
                         {group.upcomingMeetings > 0 && <p className="text-blue-600">{group.upcomingMeetings} upcoming</p>}

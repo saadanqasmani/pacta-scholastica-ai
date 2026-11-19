@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { currentAcademicYear } from '@/lib/academicYear';
 import { useUniversity } from '@/contexts/UniversityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -359,7 +360,7 @@ export function LearningAgreementGenerator() {
         },
         academicPeriod: {
           semester,
-          academicYear: '2025-2026',
+          academicYear: currentAcademicYear(),
         },
         courseMappings: selectedMatches.map(m => ({
           homeCourse: {

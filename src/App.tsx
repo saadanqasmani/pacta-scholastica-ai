@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UniversityProvider } from "@/contexts/UniversityContext";
@@ -15,15 +16,21 @@ import Mobility from "./pages/Mobility";
 import MOUManagement from "./pages/MOUManagement";
 import PartnershipManagement from "./pages/PartnershipManagement";
 import Recruitment from "./pages/Recruitment";
+import MarketIntelligence from "./pages/MarketIntelligence";
 import Documentation from "./pages/Documentation";
 import PartnerAnalytics from "./pages/PartnerAnalytics";
 import Auth from "./pages/Auth";
 import RegisterUniversity from "./pages/RegisterUniversity";
+import Diagnostics from "./pages/Diagnostics";
+import DataLibrary from "./pages/DataLibrary";
+import AddUniversity from "./pages/AddUniversity";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <LanguageProvider>
@@ -42,8 +49,13 @@ const App = () => (
                 <Route path="/mou" element={<ProtectedRoute><MainLayout><MOUManagement /></MainLayout></ProtectedRoute>} />
                 <Route path="/partnerships" element={<ProtectedRoute><MainLayout><PartnershipManagement /></MainLayout></ProtectedRoute>} />
                 <Route path="/recruitment" element={<ProtectedRoute><MainLayout><Recruitment /></MainLayout></ProtectedRoute>} />
+                <Route path="/intelligence" element={<ProtectedRoute><MainLayout><MarketIntelligence /></MainLayout></ProtectedRoute>} />
                 <Route path="/partner-analytics" element={<ProtectedRoute><MainLayout><PartnerAnalytics /></MainLayout></ProtectedRoute>} />
                 <Route path="/documentation" element={<ProtectedRoute><MainLayout><Documentation /></MainLayout></ProtectedRoute>} />
+                <Route path="/diagnostics" element={<ProtectedRoute><MainLayout><Diagnostics /></MainLayout></ProtectedRoute>} />
+                <Route path="/library" element={<ProtectedRoute><MainLayout><DataLibrary /></MainLayout></ProtectedRoute>} />
+                <Route path="/add-university" element={<ProtectedRoute><MainLayout><AddUniversity /></MainLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </UniversityProvider>
@@ -52,6 +64,7 @@ const App = () => (
       </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

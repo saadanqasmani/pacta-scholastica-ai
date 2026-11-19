@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PartnerRequest, PartnerProject, PartnerMessage, University, PartnerROI } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { MOUGeneratorDialog } from '@/components/partners/MOUGeneratorDialog';
+import { MeetingRadar } from '@/components/partners/MeetingRadar';
 
 interface PartnerWithData {
   university: University;
@@ -76,18 +77,18 @@ export default function PartnershipManagement() {
       const { data: mousData } = await supabase.from('mous').select('*').or(`initiator_university_id.eq.${selectedUniversity.id},partner_university_id.eq.${selectedUniversity.id}`);
 
       const partnerIds = new Set<string>();
-      (projectsData || []).forEach((p: any) => partnerIds.add(p.partner_university_id));
-      (roiData || []).forEach((r: any) => partnerIds.add(r.partner_university_id));
-      (mousData || []).forEach((m: any) => { if (m.initiator_university_id === selectedUniversity.id) partnerIds.add(m.partner_university_id); else partnerIds.add(m.initiator_university_id); });
+      (projectsData || []).forEach((p) => partnerIds.add(p.partner_university_id));
+      (roiData || []).forEach((r) => partnerIds.add(r.partner_university_id));
+      (mousData || []).forEach((m) => { if (m.initiator_university_id === selectedUniversity.id) partnerIds.add(m.partner_university_id); else partnerIds.add(m.initiator_university_id); });
 
       const partnersWithData: PartnerWithData[] = [];
       partnerIds.forEach(partnerId => {
         const uni = universities.find(u => u.id === partnerId);
         if (uni) {
-          const partnerProjects = (projectsData || []).filter((p: any) => p.partner_university_id === partnerId) as PartnerProject[];
-          const partnerRoi = (roiData || []).filter((r: any) => r.partner_university_id === partnerId) as PartnerROI[];
-          const partnerMessages = (messagesData || []).filter((m: any) => m.from_university_id === partnerId || m.to_university_id === partnerId) as PartnerMessage[];
-          const mou = (mousData || []).find((m: any) => (m.initiator_university_id === selectedUniversity.id && m.partner_university_id === partnerId) || (m.partner_university_id === selectedUniversity.id && m.initiator_university_id === partnerId));
+          const partnerProjects = (projectsData || []).filter((p) => p.partner_university_id === partnerId) as PartnerProject[];
+          const partnerRoi = (roiData || []).filter((r) => r.partner_university_id === partnerId) as PartnerROI[];
+          const partnerMessages = (messagesData || []).filter((m) => m.from_university_id === partnerId || m.to_university_id === partnerId) as PartnerMessage[];
+          const mou = (mousData || []).find((m) => (m.initiator_university_id === selectedUniversity.id && m.partner_university_id === partnerId) || (m.partner_university_id === selectedUniversity.id && m.initiator_university_id === partnerId));
           partnersWithData.push({ university: uni, projects: partnerProjects, roi: partnerRoi, messages: partnerMessages, mou_status: mou?.status });
         }
       });
@@ -171,17 +172,18 @@ export default function PartnershipManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList>
           <TabsTrigger value="overview">{t('partnerships.aiAdvisor')}</TabsTrigger>
           <TabsTrigger value="projects">{t('partnerships.projects')}</TabsTrigger>
           <TabsTrigger value="requests">{t('partnerships.requests')}{requests.length > 0 && <Badge variant="destructive" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">{requests.length}</Badge>}</TabsTrigger>
           <TabsTrigger value="messages">{t('partnerships.messagesTab')}</TabsTrigger>
+          <TabsTrigger value="meeting-radar">Meeting Radar<Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">Beta</Badge></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />{t('partnerships.aiPartnershipAdvisor')}</CardTitle>
                 <Button onClick={generateAIRecommendations} disabled={isGeneratingAI || partners.length === 0}>
                   {isGeneratingAI ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}{t('partnerships.generateRecommendations')}
@@ -211,7 +213,7 @@ export default function PartnershipManagement() {
                 {partners.map((partner) => {
                   const avgSatisfaction = partner.roi.length > 0 ? partner.roi.reduce((sum, r) => sum + Number(r.satisfaction_score), 0) / partner.roi.length : 0;
                   return (
-                    <div key={partner.university.id} className="flex items-center justify-between rounded-lg border p-4">
+                    <div key={partner.university.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
                       <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary"><Building2 className="h-5 w-5 text-muted-foreground" /></div><div><p className="font-medium">{partner.university.name}</p><p className="text-sm text-muted-foreground">{partner.university.country}</p></div></div>
                       <div className="flex items-center gap-4"><div className="text-right"><p className="text-sm font-medium">{partner.projects.length} {t('partnerships.projects')}</p><p className="text-xs text-muted-foreground">{avgSatisfaction > 0 ? `${avgSatisfaction.toFixed(1)}/5` : t('common.noData')}</p></div>{partner.mou_status && <Badge variant="outline" className="capitalize">{partner.mou_status}</Badge>}<Button variant="ghost" size="icon" onClick={() => setMessageDialog({ open: true, partnerId: partner.university.id, partnerName: partner.university.name })}><MessageSquare className="h-4 w-4" /></Button></div>
                     </div>
@@ -286,6 +288,10 @@ export default function PartnershipManagement() {
               </Card>
             );
           }) : <p className="text-center text-muted-foreground py-8">{t('partnerships.noMessages')}</p>}
+        </TabsContent>
+
+        <TabsContent value="meeting-radar" className="space-y-4">
+          <MeetingRadar />
         </TabsContent>
       </Tabs>
 

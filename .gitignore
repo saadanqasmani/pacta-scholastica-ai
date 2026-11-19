@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Electron build output
+release
+
+# local test/probe scripts
+*.local.mjs
