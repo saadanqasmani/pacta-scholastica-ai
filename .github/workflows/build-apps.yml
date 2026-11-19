@@ -65,6 +65,15 @@ jobs:
         run: |
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/iris.keystore"
           export IRIS_KEYSTORE_PATH="$RUNNER_TEMP/iris.keystore"
+          # Fail early with a readable message if a secret was pasted wrongly.
+          if [ -z "$IRIS_KEYSTORE_PASSWORD" ] || [ -z "$IRIS_KEY_ALIAS" ] || [ -z "$IRIS_KEY_PASSWORD" ]; then
+            echo "::error::ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets are all required"; exit 1
+          fi
+          if ! keytool -list -keystore "$IRIS_KEYSTORE_PATH" -storepass "$IRIS_KEYSTORE_PASSWORD" -alias "$IRIS_KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::Keystore could not be opened: check ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS"; exit 1
+          fi
+          # Public certificate fingerprint (safe to show) to confirm which key signed the build.
+          keytool -list -v -keystore "$IRIS_KEYSTORE_PATH" -storepass "$IRIS_KEYSTORE_PASSWORD" -alias "$IRIS_KEY_ALIAS" | grep 'SHA256:'
           for attempt in 1 2 3; do
             ./gradlew assembleRelease --no-daemon && break
             if [ "$attempt" = 3 ]; then exit 1; fi
@@ -109,7 +118,7 @@ jobs:
 
             **Windows** — download `IRIS-0.1.0-portable.exe`, double-click, done. First run: SmartScreen → "More info" → "Run anyway".
 
-            **Android** — open this page on your phone, download `IRIS-android.apk`, tap it, and allow installing from your browser when Android asks. Then open IRIS.
+            **Android** — open this page on your phone, download `IRIS-android.apk`, tap it, and allow installing from your browser when Android asks. Then open IRIS. Later builds install as updates and keep your data. (If you installed a build from before 19 Nov 2026, uninstall it once first.)
 
             AI: Settings → Cloud AI → Claude, paste your API key (stored only on that device).
           prerelease: true
